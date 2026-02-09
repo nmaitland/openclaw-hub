@@ -29,5 +29,19 @@
 - [ ] Real-time updates or periodic refresh?
 - [ ] Authentication needed?
 
+## Technical Debt / Future Improvements
+
+### Database Schema Management
+**Issue:** Current `initDb()` approach doesn't handle schema migrations well. When new columns are added, existing databases aren't automatically updated.
+
+**Solution:** Implement proper database migration tool:
+- **Option 1: [Flyway](https://flywaydb.org/)** Ã¢â‚¬â€ Industry standard for Java/SQL migrations
+- **Option 2: [Liquibase](https://www.liquibase.org/)** Ã¢â‚¬â€ XML/YAML-based, language agnostic
+- **Option 3: [db-migrate](https://db-migrate.readthedocs.io/)** Ã¢â‚¬â€ Node.js native solution
+
+**Recommendation:** Use Flyway or Liquibase for automatic schema versioning on deploy. Store migration files in `db/migrations/` folder.
+
+**Added to backlog:** Phase 3 or V3.7
+
 ## Operator Action Items
 *(To be populated as we identify tasks)*
