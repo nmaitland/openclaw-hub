@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
+import KanbanBoard from './components/KanbanBoard';
 import './App.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
-// Get auth token from localStorage or URL
 const getAuthToken = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const urlToken = urlParams.get('token');
@@ -21,7 +21,6 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [socket, setSocket] = useState(null);
-  const [tasks, setTasks] = useState([]);
   const [kanban, setKanban] = useState(null);
   const [activities, setActivities] = useState([]);
   const [buildInfo, setBuildInfo] = useState({ version: '2.1.0', commit: 'unknown' });
@@ -58,9 +57,8 @@ function App() {
     const token = getAuthToken();
     try {
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const [statusRes, tasksRes, kanbanRes] = await Promise.all([
+      const [statusRes, kanbanRes] = await Promise.all([
         fetch(`${API_URL}/api/status`, { headers }),
-        fetch(`${API_URL}/api/tasks`, { headers }),
         fetch(`${API_URL}/api/kanban`, { headers })
       ]);
       
@@ -71,15 +69,14 @@ function App() {
       }
       
       const statusData = await statusRes.json();
-      const tasksData = await tasksRes.json();
       const kanbanData = await kanbanRes.json();
       
       setStatus(statusData);
       if (statusData.recentMessages) {
         setMessages(statusData.recentMessages);
       }
-      setTasks(tasksData);
       setKanban(kanbanData);
+      setActivities(statusData.recentActivities || []);
     } catch (err) {
       console.error('Failed to fetch data:', err);
     }
@@ -132,22 +129,26 @@ function App() {
     }
   };
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'high': return '#ef4444';
-      case 'medium': return '#fbbf24';
-      case 'low': return '#4ade80';
-      default: return '#9ca3af';
-    }
+  // Calculate kanban stats
+  const getKanbanCounts = () => {
+    if (!kanban || !kanban.tasks) return { todo: 0, inProgress: 0, review: 0, total: 0 };
+    return {
+      todo: kanban.tasks.todo?.length || 0,
+      inProgress: kanban.tasks.inProgress?.length || 0,
+      review: kanban.tasks.review?.length || 0,
+      total: Object.values(kanban.tasks).reduce((acc, col) => acc + (col?.length || 0), 0)
+    };
   };
+
+  const kanbanCounts = getKanbanCounts();
 
   return (
     <div className="app">
       <header className="header">
-        <h1>Ã°Å¸Â¦â‚¬ Swissclaw Hub</h1>
+        <h1>ðŸ¦€ Swissclaw Hub</h1>
         <div className="header-status">
           <span className="indicator" style={{ background: socket?.connected ? '#4ade80' : '#ef4444' }} />
-          <span className="version">v2.0</span>
+          <span className="version">v{buildInfo.version}</span>
         </div>
       </header>
 
@@ -163,118 +164,46 @@ function App() {
               {status?.swissclaw?.currentTask || 'Ready to help'}
             </div>
             <div className="last-active">
-              Updated: {status?.swissclaw?.lastActive ? new Date(status.swissclaw.lastActive).toLocaleTimeString() : 'Ã¢â‚¬â€'}
+              Updated: {status?.swissclaw?.lastActive ? new Date(status.swissclaw.lastActive).toLocaleTimeString() : 'â€”'}
             </div>
           </div>
 
           {/* Stats Overview */}
           <div className="stats-grid">
             <div className="stat-card">
-              <div className="stat-value">{kanban?.todo?.length || 0}</div>
+              <div className="stat-value">{kanbanCounts.todo}</div>
               <div className="stat-label">To Do</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">{kanban?.inProgress?.length || 0}</div>
+              <div className="stat-value">{kanbanCounts.inProgress}</div>
               <div className="stat-label">In Progress</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">{tasks?.filter(t => !t.completed).length || 0}</div>
-              <div className="stat-label">Your Tasks</div>
+              <div className="stat-value">{kanbanCounts.review}</div>
+              <div className="stat-label">Review</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">{messages.length}</div>
-              <div className="stat-label">Messages</div>
+              <div className="stat-value">{kanbanCounts.total}</div>
+              <div className="stat-label">Total Tasks</div>
             </div>
           </div>
         </section>
 
-        {/* Middle Section: Kanban Summary & Tasks */}
-        <div className="content-grid">
-          {/* Kanban Summary */}
-          <section className="kanban-summary">
-            <h2>Ã°Å¸Â¦â‚¬ My Kanban</h2>
-            
-            {kanban?.inProgress?.length > 0 && (
-              <div className="kanban-section">
-                <h3>Ã°Å¸Å¡â‚¬ In Progress</h3>
-                <div className="task-list compact">
-                  {kanban.inProgress.slice(0, 3).map(task => (
-                    <div key={task.id} className="task-row">
-                      <span className="task-title">{task.title}</span>
-                      <span className="task-desc">{task.description?.substring(0, 60)}...</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {kanban?.todo?.length > 0 && (
-              <div className="kanban-section">
-                <h3>Ã°Å¸â€œâ€¹ Next Up</h3>
-                <div className="task-list compact">
-                  {kanban.todo.slice(0, 2).map(task => (
-                    <div key={task.id} className="task-row">
-                      <span className="task-title">{task.title}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {kanban?.done?.slice(0, 3).length > 0 && (
-              <div className="kanban-section done-section">
-                <h3>Ã¢Å“â€¦ Recently Done</h3>
-                <div className="task-list compact">
-                  {kanban.done.slice(0, 3).map(task => (
-                    <div key={task.id} className="task-row done">
-                      <span className="task-title">{task.title}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* operator's Tasks */}
-          <section className="tasks-section">
-            <h2>Ã°Å¸â€˜Â¤ Your Action Items</h2>
-            {tasks.filter(t => !t.completed).length === 0 ? (
-              <div className="no-tasks">No pending tasks!</div>
-            ) : (
-              <div className="task-list">
-                {tasks.filter(t => !t.completed).slice(0, 5).map(task => (
-                  <div key={task.id} className={`task-item priority-${task.priority}`}>
-                    <div className="task-checkbox">
-                      <input type="checkbox" checked={task.completed} readOnly />
-                    </div>
-                    <div className="task-content">
-                      <div className="task-title">{task.title}</div>
-                      {task.description && (
-                        <div className="task-desc">{task.description}</div>
-                      )}
-                    </div>
-                    <div className="task-priority" style={{ background: getPriorityColor(task.priority) }}>
-                      {task.priority}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
+        {/* Unified Kanban Board - replaces the 3 separate sections */}
+        <KanbanBoard />
 
         {/* Bottom Panels: Activity Feed & Chat side by side */}
         <div className="bottom-panels">
           {/* Activity Feed */}
           <section className="panel activity-panel">
-            <h2>Ã°Å¸â€Â Live Activity</h2>
+            <h2>ðŸ” Live Activity</h2>
             <div className="panel-content activity-feed">
               {activities.length === 0 ? (
                 <div className="empty-state">No recent activity</div>
               ) : (
                 activities.map((activity, i) => (
                   <div key={i} className="activity-item">
-                    <span className="activity-time">{new Date(activity.timestamp).toLocaleTimeString()}</span>
+                    <span className="activity-time">{new Date(activity.created_at || activity.timestamp).toLocaleTimeString()}</span>
                     <span className="activity-text">{activity.description}</span>
                   </div>
                 ))
@@ -284,7 +213,7 @@ function App() {
 
           {/* Chat */}
           <section className="panel chat-panel">
-            <h2>Ã°Å¸â€™Â¬ Chat</h2>
+            <h2>ðŸ’¬ Chat</h2>
             <div className="panel-content chat-messages">
               {messages.length === 0 ? (
                 <div className="empty-state">No messages yet</div>
@@ -317,7 +246,7 @@ function App() {
 
       <footer className="footer">
         <p>
-          Swissclaw Hub v{buildInfo.version} Ã¢â‚¬â€ Built with Ã°Å¸Â¦â‚¬ Ã¢â‚¬â€{' '}
+          Swissclaw Hub v{buildInfo.version} â€” Built with ðŸ¦€ â€”{' '}
           <a href={`https://github.com/nmaitland/swissclaw-hub/commit/${buildInfo.commit}`} target="_blank" rel="noopener noreferrer">
             {buildInfo.commit}
           </a>
