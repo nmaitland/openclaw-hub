@@ -1,28 +1,69 @@
-# Swissclaw Hub - Source Code
+# Swissclaw Hub
+
+A shared web interface for operators and assistants to communicate, collaborate, and track activities.
+
+**Live:** https://your-instance.example.com
 
 ## Project Structure
 
 ```
-src/
-â”œâ”€â”€ server/           # Node.js backend
-â”‚   â””â”€â”€ index.js     # Express + Socket.io server
-â”œâ”€â”€ client/          # React frontend
-â”‚   â”œâ”€â”€ public/      # Static files
-â”‚   â””â”€â”€ src/         # React components
-â”‚       â”œâ”€â”€ App.js
-â”‚       â”œâ”€â”€ App.css
-â”‚       â””â”€â”€ index.js
-â”œâ”€â”€ package.json     # Root package.json
-â””â”€â”€ .env.example     # Environment variables template
+server/
+â”œâ”€â”€ index.ts                # Express + Socket.io server
+â”œâ”€â”€ config/
+â”‚   â””â”€â”€ database.ts         # PostgreSQL pool & schema (initDb)
+â”œâ”€â”€ middleware/
+â”‚   â”œâ”€â”€ auth.ts             # Session auth, CSRF, rate limiting
+â”‚   â””â”€â”€ security.ts         # Helmet, XSS, audit logging
+â”œâ”€â”€ routes/
+â”‚   â””â”€â”€ auth.ts             # Login/logout/session routes
+â”œâ”€â”€ lib/
+â”‚   â”œâ”€â”€ logger.ts           # Pino structured logging
+â”‚   â””â”€â”€ errors.ts           # asyncHandler + error middleware
+â””â”€â”€ types/
+    â””â”€â”€ index.ts            # Shared server type definitions
+
+client/src/
+â”œâ”€â”€ App.tsx                 # Main app (socket.io, real-time)
+â”œâ”€â”€ App.css
+â”œâ”€â”€ components/
+â”‚   â”œâ”€â”€ KanbanBoard.tsx     # Drag-and-drop kanban (@dnd-kit)
+â”‚   â””â”€â”€ KanbanBoard.css
+â”œâ”€â”€ types/
+â”‚   â””â”€â”€ index.ts            # Frontend type definitions
+â””â”€â”€ __tests__/
+    â””â”€â”€ App.test.js
+
+tests/
+â”œâ”€â”€ unit/                   # Unit tests (mocked DB)
+â”œâ”€â”€ api/                    # Contract tests (real server + DB)
+â”œâ”€â”€ integration/            # Full flow tests (real server + DB)
+â””â”€â”€ zzz-teardown.test.js    # Closes pg pool & socket.io
 ```
 
-## Features (V1)
+## Features
 
-- âœ… Real-time status dashboard
-- âœ… WebSocket-based chat
-- âœ… Activity logging
-- âœ… PostgreSQL database
-- âœ… Responsive design
+- Real-time status dashboard with WebSocket updates
+- Interactive chat with Socket.io
+- Drag-and-drop kanban board with search and priority filtering
+- Activity feed with timestamps
+- Session-based authentication with CSRF protection
+- PostgreSQL database with raw SQL (no ORM at runtime)
+- Structured logging (pino)
+- CI/CD with GitHub Actions and Codecov
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| **Frontend** | React 18, TypeScript, @dnd-kit |
+| **Backend** | Node.js, Express, TypeScript |
+| **Real-time** | Socket.io |
+| **Database** | PostgreSQL 15+ (pg driver) |
+| **Auth** | Session-based (bcrypt + secure cookies) |
+| **Security** | Helmet, rate limiting, CORS, input validation |
+| **Testing** | Jest, ts-jest, supertest, React Testing Library |
+| **CI/CD** | GitHub Actions, Codecov |
+| **Hosting** | Render (free tier) |
 
 ## Local Development
 
@@ -43,29 +84,27 @@ npm run dev
 ```
 
 This starts:
-- Backend on http://localhost:3001
+- Backend on http://localhost:3001 (via ts-node)
 - Frontend on http://localhost:3000
 
-## Deployment to Render
+## Testing
 
-### Option 1: Blueprint (Recommended)
+See [TESTING.md](TESTING.md) for the full testing guide.
 
-1. Push code to GitHub
-2. In Render dashboard: New > Blueprint Instance
-3. Select your repository
-4. Render automatically creates:
-   - Web service
-   - PostgreSQL database
-   - Environment variables
+Quick start:
+```bash
+# Start test database
+docker-compose -f docker-compose.test.yml up -d test-db
 
-### Option 2: Manual
+# Run all backend tests
+npm run test:with-db
 
-1. Create PostgreSQL database in Render
-2. Create Web Service:
-   - Root directory: `dashboard/src`
-   - Build command: `npm install && cd client && npm install && npm run build`
-   - Start command: `npm start`
-3. Add environment variables from database
+# Run client tests
+npm run test:client
+
+# Stop test database
+docker-compose -f docker-compose.test.yml down
+```
 
 ## Environment Variables
 
@@ -75,11 +114,27 @@ This starts:
 | `NODE_ENV` | `development` or `production` | Yes |
 | `PORT` | Server port (default: 3001) | No |
 | `CLIENT_URL` | Frontend URL for CORS | Production |
+| `AUTH_USERNAME` | Login username | Yes |
+| `AUTH_PASSWORD` | Login password (bcrypt hashed) | Yes |
 
-## Next Steps (V2)
+## Deployment
 
-- [ ] Kanban board view
-- [ ] operator's action items list
-- [ ] File attachments in chat
-- [ ] Message search
-- [ ] Dark/light theme toggle
+Auto-deploys from `master` branch to Render. See [docs/project-info.md](docs/project-info.md) for hosting details.
+
+Build command:
+```bash
+npm install && cd client && npm install && npm run build && cd .. && npm run build
+```
+
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start backend + frontend in dev mode |
+| `npm run build` | Build server (tsc) + client (react-scripts) |
+| `npm start` | Start production server |
+| `npm test` | Run backend tests |
+| `npm run test:with-db` | Run backend tests with local Docker DB |
+| `npm run test:client` | Run React tests |
+| `npm run lint` | ESLint server code |
+| `npm run type-check` | TypeScript type checking |
