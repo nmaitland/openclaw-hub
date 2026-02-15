@@ -11,21 +11,21 @@
 - **Project Tracking** â€” Kanban columns: Backlog, To Do, In Progress, Review, Done, Waiting
 - **Authentication** â€” Session-based login with bcrypt, CSRF protection
 - **Responsive Design** â€” Mobile-friendly, card-based layout
+- **Database Migrations** â€” Sequelize migrations for schema management
 
 ## Decisions Made
 
 | Question | Decision |
 |----------|----------|
 | Tech stack | React 18 + Express + TypeScript |
-| Hosting | Render (free tier) |
+| Hosting | a cloud platform |
 | Real-time | WebSocket via Socket.io |
 | Authentication | Session-based (bcrypt) |
-| Database | PostgreSQL with raw SQL (pg driver) |
+| Database | PostgreSQL with raw SQL (pg driver) + Sequelize migrations |
 | Domain | your-instance.example.com |
 
 ## Remaining Backlog
 
-- Database migrations (Sequelize or alternative) â€” replace `initDb()` approach
 - Dark/light theme toggle
 - Notification system
 - File attachments in chat
