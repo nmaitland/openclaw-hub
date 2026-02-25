@@ -54,7 +54,6 @@ curl -X POST \
 DATABASE_URL=postgresql://...
 AUTH_USERNAME=admin
 AUTH_PASSWORD=<set_secure_password>
-SWISSCLAW_TOKEN=<set_secure_service_token>
 REACT_APP_API_URL=  # empty for same-origin
 ```
 
