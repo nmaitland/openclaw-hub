@@ -1831,6 +1831,9 @@ async function resetTestDb(): Promise<void> {
     `INSERT INTO users (id, email, name, password_hash, role, created_at, updated_at)
      VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
      ON CONFLICT (id) DO UPDATE SET
+       email = EXCLUDED.email,
+       name = EXCLUDED.name,
+       role = EXCLUDED.role,
        password_hash = EXCLUDED.password_hash,
        updated_at = NOW()`,
     ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'admin@example.com', 'admin', passwordHash, 'admin']
