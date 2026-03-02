@@ -451,18 +451,42 @@ body.panel-resizing {
 }
 
 @media (max-width: 768px) {
+  .app {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .main {
+    overflow: visible;
+    padding: 0.85rem;
+    gap: 0.85rem;
+  }
+
+  .main.unified {
+    gap: 0.85rem;
+  }
+
   .top-panels {
     grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .top-panels .panel.activity-panel .panel-content {
+    max-height: 260px;
   }
 
   .workspace-panels {
-    height: 100%;
-    max-height: 100%;
-    min-height: 340px;
+    --mobile-workspace-height: clamp(620px, 110dvh, 860px);
+    flex: 0 0 auto;
+    height: var(--mobile-workspace-height);
+    max-height: none;
+    min-height: 620px;
     grid-template-rows:
-      calc((1 - var(--chat-panel-ratio, 0.35)) * (100% - 52px))
+      calc((1 - var(--chat-panel-ratio, 0.35)) * (var(--mobile-workspace-height) - 52px))
       52px
-      calc(var(--chat-panel-ratio, 0.35) * (100% - 52px));
+      calc(var(--chat-panel-ratio, 0.35) * (var(--mobile-workspace-height) - 52px));
   }
 
   .panel-splitter {
