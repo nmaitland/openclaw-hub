@@ -470,7 +470,7 @@ function App() {
     ['--chat-panel-ratio' as const]: activeChatRatio,
   } as React.CSSProperties;
 
-  const renderChatPanel = (extraClass = '') => (
+  const renderChatPanel = (extraClass = '', composerAtTop = false) => (
     <section className={`panel chat-panel ${extraClass}`.trim()} data-testid="chat-panel">
       <h2>
         {'\u{1F4AC}'} Chat
@@ -478,6 +478,20 @@ function App() {
           <span className="chat-connecting"> connecting...</span>
         )}
       </h2>
+      {composerAtTop && (
+        <form className="chat-input chat-input-top" onSubmit={sendMessage}>
+          <textarea
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyDown={handleChatInputKeyDown}
+            placeholder={socketConnected ? 'Type a message...' : 'Connecting...'}
+            rows={1}
+          />
+          <button type="submit" disabled={!inputMessage.trim()}>
+            Send
+          </button>
+        </form>
+      )}
       <div className="panel-content chat-messages">
         {messages.length === 0 ? (
           <div className="empty-state">No messages yet</div>
@@ -508,18 +522,20 @@ function App() {
         )}
         <div ref={messagesEndRef} />
       </div>
-      <form className="chat-input" onSubmit={sendMessage}>
-        <textarea
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          onKeyDown={handleChatInputKeyDown}
-          placeholder={socketConnected ? 'Type a message...' : 'Connecting...'}
-          rows={1}
-        />
-        <button type="submit" disabled={!inputMessage.trim()}>
-          Send
-        </button>
-      </form>
+      {!composerAtTop && (
+        <form className="chat-input" onSubmit={sendMessage}>
+          <textarea
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyDown={handleChatInputKeyDown}
+            placeholder={socketConnected ? 'Type a message...' : 'Connecting...'}
+            rows={1}
+          />
+          <button type="submit" disabled={!inputMessage.trim()}>
+            Send
+          </button>
+        </form>
+      )}
     </section>
   );
 
@@ -748,7 +764,7 @@ function App() {
           </section>
         )}
 
-        {isMobileLayout && mobileViewMode === 'chat' && renderChatPanel('mobile-chat-standalone')}
+        {isMobileLayout && mobileViewMode === 'chat' && renderChatPanel('mobile-chat-standalone', true)}
       </main>
 
       <footer className="footer">

@@ -658,10 +658,20 @@ function KanbanBoard() {
               onClick={() => handleMoveMobileColumn('prev')}
               aria-label="Previous status column"
             >
-              Prev
+              {'\u2039'} Prev
             </button>
             <div className="kanban-mobile-current-column">
-              {COLUMNS.find((col) => col.name === mobileColumnName)?.displayName || 'Column'}
+              {(() => {
+                const currentColumn = COLUMNS.find((col) => col.name === mobileColumnName);
+                const currentCount = (filteredTasks[mobileColumnName] || []).length;
+                return (
+                  <>
+                    <span>{currentColumn?.emoji || '\u{1F4CB}'}</span>
+                    <span>{currentColumn?.displayName || 'Column'}</span>
+                    <span className="kanban-mobile-current-count">{currentCount}</span>
+                  </>
+                );
+              })()}
             </div>
             <button
               type="button"
@@ -669,7 +679,7 @@ function KanbanBoard() {
               onClick={() => handleMoveMobileColumn('next')}
               aria-label="Next status column"
             >
-              Next
+              Next {'\u203A'}
             </button>
           </div>
           <div className="kanban-mobile-pills" role="tablist" aria-label="Kanban status columns">

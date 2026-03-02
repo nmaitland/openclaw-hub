@@ -407,6 +407,11 @@ body.panel-resizing {
   border-top: 1px solid rgba(255, 69, 0, 0.2);
 }
 
+.chat-input.chat-input-top {
+  border-top: none;
+  border-bottom: 1px solid rgba(255, 69, 0, 0.2);
+}
+
 .chat-input textarea {
   flex: 1;
   background: rgba(0, 0, 0, 0.3);
@@ -476,6 +481,8 @@ body.panel-resizing {
 
   .top-panels.mobile-active-panel {
     grid-template-columns: 1fr;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .mobile-mode-tabs {
@@ -494,6 +501,19 @@ body.panel-resizing {
     max-height: 260px;
   }
 
+  .top-panels.mobile-active-panel .panel.activity-panel {
+    min-height: clamp(520px, 76dvh, 820px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .top-panels.mobile-active-panel .panel.activity-panel .panel-content {
+    max-height: none;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
   .mobile-workspace-panel {
     min-height: clamp(560px, 90dvh, 820px);
     display: flex;
@@ -507,11 +527,20 @@ body.panel-resizing {
 
   .mobile-chat-standalone {
     min-height: clamp(520px, 78dvh, 760px);
+    max-height: calc(100dvh - 185px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-chat-standalone .chat-input.chat-input-top {
+    flex: 0 0 auto;
   }
 
   .mobile-chat-standalone .chat-messages {
-    min-height: 0;
     flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
   }
 }
 
