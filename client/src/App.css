@@ -128,12 +128,24 @@
     calc(var(--chat-panel-ratio, 0.35) * (100% - 10px));
 }
 
+.workspace-panels > .kanban-panel-wrap {
+  grid-row: 1;
+}
+
+.workspace-panels > .panel-splitter {
+  grid-row: 2;
+}
+
+.workspace-panels > .chat-panel {
+  grid-row: 3;
+}
+
 .workspace-panels.kanban-collapsed {
-  grid-template-rows: 56px 0 minmax(0, calc(100% - 56px));
+  grid-template-rows: auto 0 minmax(0, 1fr);
 }
 
 .workspace-panels.chat-collapsed {
-  grid-template-rows: minmax(0, calc(100% - 56px)) 0 56px;
+  grid-template-rows: minmax(0, 1fr) 0 auto;
 }
 
 .kanban-panel-wrap {
