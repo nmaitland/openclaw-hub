@@ -16,7 +16,7 @@ describe('Auth edge cases', () => {
         .post('/api/login')
         .send({
           username: process.env.AUTH_USERNAME || 'admin',
-          password: process.env.AUTH_PASSWORD || 'changeme123',
+          password: process.env.AUTH_PASSWORD || 'test-only-default',
         })
         .expect(200);
 
@@ -37,7 +37,7 @@ describe('Auth edge cases', () => {
     it('returns 401 on wrong username', async () => {
       const response = await request(app)
         .post('/api/login')
-        .send({ username: 'nobody', password: 'changeme123' })
+        .send({ username: 'nobody', password: 'test-only-default' })
         .expect(401);
 
       expect(response.body).toHaveProperty('error');
@@ -55,7 +55,7 @@ describe('Auth edge cases', () => {
     it('returns error when username is missing', async () => {
       const response = await request(app)
         .post('/api/login')
-        .send({ password: 'changeme123' });
+        .send({ password: 'test-only-default' });
 
       expect([400, 401]).toContain(response.status);
     });
