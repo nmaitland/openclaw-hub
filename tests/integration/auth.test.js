@@ -12,7 +12,7 @@ describe('Auth API (real server)', () => {
         .post('/api/login')
         .send({
           username: process.env.AUTH_USERNAME || 'admin',
-          password: process.env.AUTH_PASSWORD || 'changeme123',
+          password: process.env.AUTH_PASSWORD || 'test-only-default',
         })
         .expect(200);
 
