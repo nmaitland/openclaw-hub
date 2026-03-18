@@ -239,6 +239,34 @@ describe('App Component', () => {
     });
   });
 
+  it('collapses and expands the top panels (status & activities)', async () => {
+    render(<App />);
+
+    // Status and Activities headings should be visible initially
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /Status/ })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Activities/ })).toBeInTheDocument();
+    });
+
+    // Click collapse
+    const collapseBtn = screen.getByRole('button', { name: 'Collapse status and activities' });
+    fireEvent.click(collapseBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: /Status/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: /Activities/ })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Expand status and activities' })).toBeInTheDocument();
+    });
+
+    // Click expand
+    fireEvent.click(screen.getByRole('button', { name: 'Expand status and activities' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /Status/ })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Activities/ })).toBeInTheDocument();
+    });
+  });
+
   it('collapsing kanban keeps chat panel expanded', async () => {
     render(<App />);
 
