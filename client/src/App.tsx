@@ -8,7 +8,8 @@ import type {
   StatusResponse,
   MessageProcessingState,
   MessageStateUpdate,
-  ModelUsageCostType
+  ModelUsageCostType,
+  ModelUsageSnapshot
 } from './types';
 import './App.css';
 
@@ -73,9 +74,39 @@ function App() {
   const [mobileViewMode, setMobileViewMode] = useState<MobileViewMode>(readPersistedMobileViewMode);
   const [isMobileLayout, setIsMobileLayout] = useState<boolean>(getMobileLayoutMatches);
   const [isModelUsageModalOpen, setIsModelUsageModalOpen] = useState(false);
+  const [usageHistory, setUsageHistory] = useState<ModelUsageSnapshot[] | null>(null);
+  const [isLoadingUsageHistory, setIsLoadingUsageHistory] = useState(false);
   const [isTopPanelsCollapsed, setIsTopPanelsCollapsed] = useState(false);
   const [isKanbanCollapsedDesktop, setIsKanbanCollapsedDesktop] = useState(false);
   const [isChatCollapsedDesktop, setIsChatCollapsedDesktop] = useState(false);
+
+  // Fetch 30-day usage history when modal opens
+  useEffect(() => {
+    if (!isModelUsageModalOpen) {
+      return;
+    }
+    let cancelled = false;
+    const fetchHistory = async () => {
+      setIsLoadingUsageHistory(true);
+      try {
+        const token = getAuthToken();
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch(`${API_URL}/api/model-usage?limit=30`, { headers });
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setUsageHistory(data.snapshots ?? []);
+        }
+      } catch {
+        // ignore fetch errors
+      } finally {
+        if (!cancelled) {
+          setIsLoadingUsageHistory(false);
+        }
+      }
+    };
+    fetchHistory();
+    return () => { cancelled = true; };
+  }, [isModelUsageModalOpen]);
 
   // Check auth on mount
   useEffect(() => {
@@ -656,6 +687,45 @@ function App() {
                   </span>
                 </div>
               ))}
+            </div>
+
+            <div className="usage-history-section">
+              <h4>30-Day Summary</h4>
+              {isLoadingUsageHistory ? (
+                <p className="usage-history-loading">Loading...</p>
+              ) : usageHistory && usageHistory.length > 0 ? (
+                <table className="usage-history-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Requests</th>
+                      <th>Paid Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usageHistory.map((snap) => (
+                      <tr key={snap.usageDate}>
+                        <td>{snap.usageDate}</td>
+                        <td>{snap.totals.requestCount.toLocaleString()}</td>
+                        <td>${getCostAmount(snap.totals.costs, 'paid').toFixed(4)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="usage-history-total">
+                      <td>Total</td>
+                      <td>
+                        {usageHistory.reduce((sum, s) => sum + s.totals.requestCount, 0).toLocaleString()}
+                      </td>
+                      <td>
+                        ${usageHistory.reduce((sum, s) => sum + getCostAmount(s.totals.costs, 'paid'), 0).toFixed(4)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              ) : (
+                <p className="usage-history-loading">No usage history available.</p>
+              )}
             </div>
           </div>
         </div>
