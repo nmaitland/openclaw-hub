@@ -61,6 +61,32 @@ describe('client entry PWA wiring', () => {
     expect(addEventListener).not.toHaveBeenCalled();
   });
 
+  it('logs a registration error if the service worker registration fails', async () => {
+    const loadListeners = [];
+    const register = jest.fn().mockRejectedValue(new Error('boom'));
+    const addEventListener = jest.fn((event, handler) => {
+      if (event === 'load') {
+        loadListeners.push(handler);
+      }
+    });
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    registerServiceWorker(
+      {
+        location: { hostname: 'localhost', protocol: 'http:' },
+        addEventListener,
+      },
+      {
+        serviceWorker: { register },
+      }
+    );
+
+    await loadListeners[0]();
+    await Promise.resolve();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Service worker registration failed:', expect.any(Error));
+  });
+
   it('declares manifest and apple touch icon links in the HTML entry', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8');
 
