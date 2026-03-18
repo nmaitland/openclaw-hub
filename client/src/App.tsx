@@ -87,7 +87,6 @@ const getActivitySenderVariant = (sender: string | null): 'swissclaw' | 'user' |
   return 'user';
 };
 
-
 function App() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
