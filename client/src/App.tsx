@@ -12,6 +12,8 @@ import type {
   ModelUsageCostType,
   ModelUsageSnapshot,
   User,
+  ReactionUpdate,
+  ReactionRemove,
 } from './types';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import ReactMarkdown from 'react-markdown';
@@ -112,6 +114,8 @@ function App() {
 
   // Message processing states
   const [messageStates, setMessageStates] = useState<Record<string, MessageProcessingState>>({});
+  const [messageReactions, setMessageReactions] = useState<Record<string, ReactionUpdate[]>>({});
+  const [reactionPickerMessageId, setReactionPickerMessageId] = useState<string | null>(null);
   const [mobileViewMode, setMobileViewMode] = useState<MobileViewMode>(readPersistedMobileViewMode);
   const [isMobileLayout, setIsMobileLayout] = useState<boolean>(getMobileLayoutMatches);
   const [isModelUsageModalOpen, setIsModelUsageModalOpen] = useState(false);
@@ -221,6 +225,30 @@ function App() {
 
     newSocket.on('message-state', ({ messageId, state }: MessageStateUpdate) => {
       setMessageStates((prev) => ({ ...prev, [messageId]: state }));
+    });
+
+    newSocket.on('reaction', (update: ReactionUpdate) => {
+      setMessageReactions((prev) => {
+        const messageIdStr = String(update.messageId);
+        const existing = prev[messageIdStr] || [];
+        return {
+          ...prev,
+          [messageIdStr]: [...existing, update],
+        };
+      });
+    });
+
+    newSocket.on('reaction-remove', (remove: ReactionRemove) => {
+      setMessageReactions((prev) => {
+        const messageIdStr = String(remove.messageId);
+        const existing = prev[messageIdStr] || [];
+        return {
+          ...prev,
+          [messageIdStr]: existing.filter(
+            r => !(r.reactor === remove.reactor && r.emoji === remove.emoji)
+          ),
+        };
+      });
     });
 
     return () => {
@@ -500,6 +528,68 @@ function App() {
     }
   };
 
+  // Reaction picker functions
+  const sendReaction = async (messageId: string, emoji: string) => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/service/messages/${messageId}/reactions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reactor: currentUser?.name || 'Unknown', emoji }),
+      });
+
+      if (!res.ok) {
+        console.error('Failed to send reaction:', res.status);
+      }
+    } catch (err) {
+      console.error('Failed to send reaction:', err);
+    }
+
+    setReactionPickerMessageId(null);
+  };
+
+  const removeReaction = async (messageId: string, emoji: string) => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/service/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reactor: currentUser?.name || 'Unknown' }),
+      });
+
+      if (!res.ok) {
+        console.error('Failed to remove reaction:', res.status);
+      }
+    } catch (err) {
+      console.error('Failed to remove reaction:', err);
+    }
+
+    setReactionPickerMessageId(null);
+  };
+
+  const toggleReaction = (messageId: string, emoji: string) => {
+    const reactions = messageReactions[messageId] || [];
+    const userReaction = reactions.find(r => r.reactor === currentUser?.name && r.emoji === emoji);
+
+    if (userReaction) {
+      removeReaction(messageId, emoji);
+    } else {
+      sendReaction(messageId, emoji);
+    }
+  };
+
+  const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '👀'];
+
   const getCostAmount = (costs: Array<{ type: ModelUsageCostType; amount: number }>, type: ModelUsageCostType): number => {
     return costs.find((entry) => entry.type === type)?.amount || 0;
   };
@@ -633,6 +723,45 @@ function App() {
                     </span>
                   </div>
                   <span className="chat-text"><Markdown>{msg.content.replace(/\n/g, '  \n')}</Markdown></span>
+                  {messageReactions[msg.id] && messageReactions[msg.id].length > 0 && (
+                    <div className="chat-reactions">
+                      {Object.entries(
+                        messageReactions[msg.id].reduce((acc, r) => {
+                          acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+                          return acc;
+                        }, {} as Record<string, number>)
+                      ).map(([emoji, count]) => (
+                        <span
+                          key={emoji}
+                          className={`chat-reaction ${messageReactions[msg.id]?.some(r => r.reactor === currentUser?.name && r.emoji === emoji) ? 'chat-reaction-own' : ''}`}
+                          title={emoji}
+                          onClick={() => toggleReaction(msg.id, emoji)}
+                        >
+                          {emoji} {count > 1 ? count : ''}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    className="chat-reaction-btn"
+                    onClick={() => setReactionPickerMessageId(reactionPickerMessageId === msg.id ? null : msg.id)}
+                    title="Add reaction"
+                  >
+                    +
+                  </button>
+                  {reactionPickerMessageId === msg.id && (
+                    <div className="chat-reaction-picker">
+                      {REACTION_EMOJIS.map(emoji => (
+                        <button
+                          key={emoji}
+                          className="chat-reaction-emoji-btn"
+                          onClick={() => toggleReaction(msg.id, emoji)}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))
             )}
