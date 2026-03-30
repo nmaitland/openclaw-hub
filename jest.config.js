@@ -24,6 +24,8 @@ module.exports = {
     '<rootDir>/tests/**/*.test.{js,jsx,ts,tsx}',
     '<rootDir>/tests/**/*.spec.{js,jsx,ts,tsx}',
   ],
+  testPathIgnorePatterns: ['<rootDir>/dist/'],
+  modulePathIgnorePatterns: ['<rootDir>/dist/'],
   collectCoverageFrom: [
     'server/**/*.{js,ts}',
     '!server/models/**',

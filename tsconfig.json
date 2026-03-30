@@ -43,6 +43,7 @@
     "coverage",
     "client/node_modules",
     "client/build",
-    "openclaw-extension"
+    "openclaw-extension",
+    "tests/openclaw-extension"
   ]
 }
