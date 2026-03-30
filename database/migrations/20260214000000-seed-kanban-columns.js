@@ -15,7 +15,7 @@ module.exports = {
       {
         name: 'backlog',
         display_name: 'Backlog',
-        emoji: 'Ã°Å¸â€œÂ',
+        emoji: '📝',
         color: '#6b7280',
         position: 0,
         created_at: new Date()
@@ -23,7 +23,7 @@ module.exports = {
       {
         name: 'todo',
         display_name: 'To Do',
-        emoji: 'Ã°Å¸â€œâ€¹',
+        emoji: '📋',
         color: '#3b82f6',
         position: 1,
         created_at: new Date()
@@ -31,7 +31,7 @@ module.exports = {
       {
         name: 'inProgress',
         display_name: 'In Progress',
-        emoji: 'Ã°Å¸Å¡â‚¬',
+        emoji: '🚀',
         color: '#f59e0b',
         position: 2,
         created_at: new Date()
@@ -39,7 +39,7 @@ module.exports = {
       {
         name: 'review',
         display_name: 'Review',
-        emoji: 'Ã°Å¸â€˜â‚¬',
+        emoji: '👀',
         color: '#8b5cf6',
         position: 3,
         created_at: new Date()
@@ -47,7 +47,7 @@ module.exports = {
       {
         name: 'done',
         display_name: 'Done',
-        emoji: 'Ã¢Å“â€¦',
+        emoji: '✅',
         color: '#10b981',
         position: 4,
         created_at: new Date()
@@ -55,7 +55,7 @@ module.exports = {
       {
         name: 'waiting',
         display_name: 'Waiting',
-        emoji: 'Ã¢ÂÂ¸Ã¯Â¸Â',
+        emoji: '⏸️',
         color: '#ef4444',
         position: 5,
         created_at: new Date()

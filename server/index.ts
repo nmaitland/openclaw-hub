@@ -572,7 +572,7 @@ const apiLoginRateLimit =
     ? (_req: Request, _res: Response, next: NextFunction): void => next()
     : authRateLimit;
 
-// API Documentation Ã¢â‚¬â€ Swagger UI (no auth required in dev/test, disabled in production)
+// API Documentation â€” Swagger UI (no auth required in dev/test, disabled in production)
 if (process.env.NODE_ENV !== 'production') {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     customSiteTitle: 'Swissclaw Hub API Docs',
@@ -2950,7 +2950,7 @@ app.post('/api/seed', asyncHandler(async (req: Request, res: Response) => {
       );
     }
 
-    // Seed Waiting tasks
+    // Seed waiting tasks
     await pool.query(
       'INSERT INTO kanban_tasks (task_id, column_id, title, description, priority, assigned_to, tags, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
       [generateTaskId(), columnMap['waiting'], 'Review GitHub repo permissions', 'Need access to configure webhooks and secrets', 'medium', 'operator', JSON.stringify(['review', 'infra']), 0]
