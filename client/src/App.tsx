@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import KanbanBoard from './components/KanbanBoard';
 import UserManagement from './components/UserManagement';
@@ -709,7 +709,7 @@ function App() {
               orderedMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`chat-message ${msg.sender === currentUser?.name ? 'chat-operator' : 'chat-swissclaw'}`}
+                  className={`chat-message ${msg.sender === currentUser?.name ? 'chat-own' : 'chat-peer'}`}
                 >
                   <div className="chat-message-header">
                     <span className="chat-sender">

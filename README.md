@@ -1,51 +1,51 @@
 # Swissclaw Hub
 
-A shared web interface for operators and assistants to communicate, collaborate, and track activities.
+A web hub for chat, collaboration, kanban tracking, and status updates.
 
 ## Project Structure
 
 ```
 server/
-â”œâ”€â”€ index.ts                # Express + Socket.io server
-â”œâ”€â”€ mcp-server.ts           # MCP server for AI agent access
-â”œâ”€â”€ config/
-â”‚   â”œâ”€â”€ database.ts         # PostgreSQL pool & health checks
-â”‚   â””â”€â”€ swagger.ts          # OpenAPI/Swagger base config
-â”œâ”€â”€ middleware/
-â”‚   â”œâ”€â”€ auth.ts             # Session auth, CSRF, rate limiting
-â”‚   â””â”€â”€ security.ts         # Helmet, XSS, audit logging
-â”œâ”€â”€ routes/
-â”‚   â”œâ”€â”€ admin.ts            # Admin user management routes
-â”‚   â””â”€â”€ auth.ts             # Enhanced login/logout/session routes
-â”œâ”€â”€ lib/
-â”‚   â”œâ”€â”€ logger.ts           # Pino structured logging
-â”‚   â””â”€â”€ errors.ts           # asyncHandler + error middleware
-â””â”€â”€ types/
-    â””â”€â”€ index.ts            # Shared server type definitions
+├── index.ts                # Express + Socket.io server
+├── mcp-server.ts           # MCP server for AI agent access
+├── config/
+│   ├── database.ts         # PostgreSQL pool & health checks
+│   └── swagger.ts          # OpenAPI/Swagger base config
+├── middleware/
+│   ├── auth.ts             # Session auth, CSRF, rate limiting
+│   └── security.ts         # Helmet, XSS, audit logging
+├── routes/
+│   ├── admin.ts            # Admin user management routes
+│   └── auth.ts             # Enhanced login/logout/session routes
+├── lib/
+│   ├── logger.ts           # Pino structured logging
+│   └── errors.ts           # asyncHandler + error middleware
+└── types/
+    └── index.ts            # Shared server type definitions
 
 config/
-â””â”€â”€ database.js             # Sequelize CLI config (migrations)
+└── database.js             # Sequelize CLI config (migrations)
 
 database/
-â”œâ”€â”€ migrations/             # Sequelize migrations (schema management)
-â””â”€â”€ seeders/
+├── migrations/             # Sequelize migrations (schema management)
+└── seeders/
 
 client/src/
-â”œâ”€â”€ App.tsx                 # Main app (socket.io, real-time)
-â”œâ”€â”€ App.css
-â”œâ”€â”€ components/
-â”‚   â”œâ”€â”€ KanbanBoard.tsx     # Drag-and-drop kanban (@dnd-kit)
-â”‚   â””â”€â”€ KanbanBoard.css
-â”œâ”€â”€ types/
-â”‚   â””â”€â”€ index.ts            # Frontend type definitions
-â””â”€â”€ __tests__/
-    â””â”€â”€ App.test.js
+├── App.tsx                 # Main app (socket.io, real-time)
+├── App.css
+├── components/
+│   ├── KanbanBoard.tsx     # Drag-and-drop kanban (@dnd-kit)
+│   └── KanbanBoard.css
+├── types/
+│   └── index.ts            # Frontend type definitions
+└── __tests__/
+    └── App.test.js
 
 tests/
-â”œâ”€â”€ unit/                   # Unit tests (mocked dependencies, no DB)
-â”œâ”€â”€ api/                    # Contract tests (real server + DB)
-â”œâ”€â”€ integration/            # Full flow tests (real server + DB)
-â””â”€â”€ zzz-teardown.test.js    # Closes pg pool & socket.io
+├── unit/                   # Unit tests (mocked dependencies, no DB)
+├── api/                    # Contract tests (real server + DB)
+├── integration/            # Full flow tests (real server + DB)
+└── zzz-teardown.test.js    # Closes pg pool & socket.io
 ```
 
 ## Features
@@ -213,7 +213,7 @@ The reactions API allows adding, removing, and listing emoji reactions on chat m
 curl -X POST "https://hub.example.com/api/service/messages/123/reactions" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"reactor": "operator", "emoji": "ðŸ‘"}'
+  -d '{"reactor": "operator", "emoji": "👍"}'
 ```
 
 **Remove a reaction:**

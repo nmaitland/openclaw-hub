@@ -1,7 +1,7 @@
 # Swissclaw Hub - Project Information
 
 ## Overview
-A shared web interface for operators and assistants to communicate and collaborate.
+A web hub for chat, collaboration, kanban tracking, and status updates.
 
 ## Hosting
 

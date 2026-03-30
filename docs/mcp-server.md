@@ -1,4 +1,4 @@
-# MCP Server â€” How To
+# MCP Server — How To
 
 The Swissclaw Hub includes an MCP (Model Context Protocol) server that lets AI agents interact with the Hub's REST API. It uses stdio transport and exposes tools for managing chat, kanban tasks, activities, model usage, and server status.
 
@@ -144,38 +144,38 @@ Once the MCP server is connected in Claude Code, you can ask things like:
 
 ## Troubleshooting
 
-**"API ... failed (401)"** â€” The Hub requires authentication. Set `SWISSCLAW_AUTH_TOKEN` to a valid session token, or ensure the Hub is running in development mode.
+**"API ... failed (401)"** — The Hub requires authentication. Set `SWISSCLAW_AUTH_TOKEN` to a valid session token, or ensure the Hub is running in development mode.
 
-**"fetch failed" / connection refused** â€” The Hub server isn't running. Start it with `npm run dev` or `npm run server:dev`.
+**"fetch failed" / connection refused** — The Hub server isn't running. Start it with `npm run dev` or `npm run server:dev`.
 
-**"Socket.io not connected"** â€” `SWISSCLAW_AUTH_TOKEN` is not set or invalid. The MCP server needs a valid session token to connect via Socket.io for real-time chat.
+**"Socket.io not connected"** — `SWISSCLAW_AUTH_TOKEN` is not set or invalid. The MCP server needs a valid session token to connect via Socket.io for real-time chat.
 
-**MCP server not appearing in Claude Code** â€” Check that `.mcp.json` exists at the project root and that `npx ts-node` is available. Restart Claude Code after adding the config.
+**MCP server not appearing in Claude Code** — Check that `.mcp.json` exists at the project root and that `npx ts-node` is available. Restart Claude Code after adding the config.
 
 ## Architecture
 
 ```
 Claude Code / AI Agent
-        â”‚
-        â”‚ stdio (JSON-RPC)
-        â–¼
+        │
+        │ stdio (JSON-RPC)
+        ▼
    MCP Server (server/mcp-server.ts)
-        â”‚
-        â”œâ”€â”€â”€ HTTP (fetch) â”€â”€â”€â–º Hub REST API
-        â”‚
-        â””â”€â”€â”€ Socket.io â”€â”€â”€â”€â”€â–º Hub Real-time
-        â–²                          â”‚
-        â”‚                          â–¼
-   Buffered Messages â—„â”€â”€â”€â”€â”€â”€ Broadcast
+        │
+        ├─── HTTP (fetch) ───► Hub REST API
+        │
+        └─── Socket.io ─────► Hub Real-time
+        ▲                          │
+        │                          ▼
+   Buffered Messages ◄────── Broadcast
 ```
 
-The MCP server is a thin adapter layer â€” it translates MCP tool calls into HTTP requests to the Hub's existing REST API. For real-time chat, it maintains a persistent Socket.io connection that buffers incoming messages for the `chat_listen` tool.
+The MCP server is a thin adapter layer — it translates MCP tool calls into HTTP requests to the Hub's existing REST API. For real-time chat, it maintains a persistent Socket.io connection that buffers incoming messages for the `chat_listen` tool.
 
 ### Chat Bridge Flow
 
 1. **Connection:** MCP server connects to Hub via Socket.io using `SWISSCLAW_AUTH_TOKEN`
-2. **Incoming:** Hub broadcasts messages via Socket.io â†’ MCP server buffers them
-3. **Polling:** Agent calls `chat_listen` â†’ receives buffered messages
-4. **Outgoing:** Agent calls `send_message` â†’ MCP emits via Socket.io â†’ Hub broadcasts to all clients
+2. **Incoming:** Hub broadcasts messages via Socket.io → MCP server buffers them
+3. **Polling:** Agent calls `chat_listen` → receives buffered messages
+4. **Outgoing:** Agent calls `send_message` → MCP emits via Socket.io → Hub broadcasts to all clients
 
 This design allows agents behind firewalls to participate in real-time chat without requiring inbound connections.

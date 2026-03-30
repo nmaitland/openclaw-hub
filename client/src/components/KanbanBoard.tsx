@@ -60,7 +60,7 @@ const formatTaskDate = (value: string | undefined, includeTime = false): string 
   return includeTime ? parsed.toLocaleString() : parsed.toLocaleDateString();
 };
 
-// â”€â”€â”€ Sortable Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Sortable Card ───────────────────────────────────────────────────────────
 
 interface SortableCardProps {
   task: KanbanCardTask;
@@ -110,7 +110,7 @@ function SortableCard({ task, onClick }: SortableCardProps) {
   );
 }
 
-// â”€â”€â”€ Static Card (mobile â€” no drag, just tappable) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Static Card (mobile — no drag, just tappable) ──────────────────────────
 
 function StaticCard({ task, onClick }: SortableCardProps) {
   const activateCard = () => onClick(task);
@@ -136,7 +136,7 @@ function StaticCard({ task, onClick }: SortableCardProps) {
   );
 }
 
-// â”€â”€â”€ Card Content (shared between normal and drag overlay) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Card Content (shared between normal and drag overlay) ───────────────────
 
 function CardContent({ task }: { task: KanbanCardTask }) {
   return (
@@ -176,7 +176,7 @@ function CardContent({ task }: { task: KanbanCardTask }) {
   );
 }
 
-// â”€â”€â”€ Column Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Column Component ────────────────────────────────────────────────────────
 
 interface KanbanColumnProps {
   col: KanbanColumnDef & { special?: boolean };
@@ -236,7 +236,7 @@ function KanbanColumn({ col, tasks, totalInColumn, onTaskClick, onAddClick, isMo
   );
 }
 
-// â”€â”€â”€ Main KanbanBoard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main KanbanBoard ────────────────────────────────────────────────────────
 
 interface NewTaskForm {
   title: string;
@@ -303,7 +303,7 @@ function KanbanBoard({
   );
   const noSensors = useSensors();
 
-  // â”€â”€â”€ Data Fetching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Data Fetching ───────────────────────────────────────────────────
 
   const fetchKanbanData = useCallback(async () => {
     try {
@@ -356,7 +356,7 @@ function KanbanBoard({
     return () => mediaQuery.removeListener(handleMediaQueryChange);
   }, []);
 
-  // â”€â”€â”€ Keyboard shortcut: Ctrl+K to focus search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Keyboard shortcut: Ctrl+K to focus search ─────────────────────
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -370,7 +370,7 @@ function KanbanBoard({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // â”€â”€â”€ Filtering Logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Filtering Logic ───────────────────────────────────────────────
 
   const filteredTasks = useMemo((): TasksByColumn => {
     const result = {} as TasksByColumn;
@@ -445,7 +445,7 @@ function KanbanBoard({
     ? COLUMNS.filter((col) => col.name === mobileColumnName)
     : COLUMNS;
 
-  // â”€â”€â”€ Drag and Drop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Drag and Drop ─────────────────────────────────────────────────
 
   const findTaskById = (id: string | number): KanbanCardTask | undefined => {
     for (const col of COLUMNS) {
@@ -488,7 +488,7 @@ function KanbanBoard({
     if (overId.startsWith('column-')) {
       targetColumn = overId.replace('column-', '') as ColumnName;
     } else {
-      // Dropped over another task â€” find its column
+      // Dropped over another task — find its column
       targetColumn = findColumnForTask(over.id);
       targetTaskId = over.id;
       
@@ -564,7 +564,7 @@ function KanbanBoard({
     }
   };
 
-  // â”€â”€â”€ Task Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Task Actions ──────────────────────────────────────────────────
 
   const handleTaskClick = (task: KanbanCardTask) => {
     // Don't open modal if we were dragging
@@ -675,7 +675,7 @@ function KanbanBoard({
     setCopiedTaskId(null);
   };
 
-  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Render ────────────────────────────────────────────────────────
 
   if (loading) {
     return (

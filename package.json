@@ -4,7 +4,7 @@
 
   "version": "0.0.0-development",
 
-  "description": "Shared dashboard for operators and assistants",
+  "description": "OpenClaw web hub for chat, kanban, and status",
 
   "main": "server/index.ts",
 

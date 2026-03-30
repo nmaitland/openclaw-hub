@@ -572,7 +572,7 @@ const apiLoginRateLimit =
     ? (_req: Request, _res: Response, next: NextFunction): void => next()
     : authRateLimit;
 
-// API Documentation â€” Swagger UI (no auth required in dev/test, disabled in production)
+// API Documentation — Swagger UI (no auth required in dev/test, disabled in production)
 if (process.env.NODE_ENV !== 'production') {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     customSiteTitle: 'Swissclaw Hub API Docs',

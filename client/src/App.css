@@ -575,12 +575,12 @@ body {
   line-height: 1.4;
 }
 
-.chat-operator {
+.chat-own {
   background: rgba(59, 130, 246, 0.1);
   border-left: 3px solid #3b82f6;
 }
 
-.chat-swissclaw {
+.chat-peer {
   background: rgba(255, 69, 0, 0.1);
   border-left: 3px solid #ff4500;
 }
