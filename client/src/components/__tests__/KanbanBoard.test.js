@@ -6,7 +6,7 @@ import KanbanBoard from '../KanbanBoard';
 // Mock CSS import
 jest.mock('../KanbanBoard.css', () => ({}));
 
-// Mock @dnd-kit modules â€” use plain functions (not jest.fn) to survive clearAllMocks
+// Mock @dnd-kit modules — use plain functions (not jest.fn) to survive clearAllMocks
 jest.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }) => <div data-testid="dnd-context">{children}</div>,
   DragOverlay: ({ children }) => <div data-testid="drag-overlay">{children}</div>,
@@ -158,7 +158,7 @@ describe('KanbanBoard Component', () => {
       expect(screen.getByText('In Progress')).toBeInTheDocument();
       expect(screen.getByText('Review')).toBeInTheDocument();
       expect(screen.getByText('Done')).toBeInTheDocument();
-      expect(screen.getByText('Waiting for Neil')).toBeInTheDocument();
+      expect(screen.getByText('Waiting')).toBeInTheDocument();
     });
   });
 
@@ -546,7 +546,7 @@ describe('KanbanBoard Component', () => {
     });
   });
 
-  // â”€â”€â”€ Search & Filter Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Search & Filter Tests ─────────────────────────────────────────
 
   it('renders the search input', async () => {
     fetch.mockResolvedValueOnce({
@@ -682,7 +682,7 @@ describe('KanbanBoard Component', () => {
     expect(searchInput.value).toBe('');
   });
   
-  // â”€â”€â”€ Delete Task Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Delete Task Tests ───────────────────────────────────────────────
   
   describe('Delete Task Functionality', () => {
     it('shows delete confirmation when clicking Delete Task button in edit modal', async () => {

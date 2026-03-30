@@ -4,24 +4,24 @@ Features and ideas not yet implemented. See [README.md](../README.md) for what's
 
 ## UX Polish (Phase 5)
 
-- [ ] **Dark/light theme toggle** â€” persist preference in localStorage
-- [ ] **Notification system** â€” browser notifications + toast messages for new chat, task updates
-- [ ] **Mobile responsiveness improvements** â€” better touch targets, responsive chat panel
-- [ ] **Loading states and error boundaries** â€” React error boundaries, skeleton loaders for chat/activity
+- [ ] **Dark/light theme toggle** — persist preference in localStorage
+- [ ] **Notification system** — browser notifications + toast messages for new chat, task updates
+- [ ] **Mobile responsiveness improvements** — better touch targets, responsive chat panel
+- [ ] **Loading states and error boundaries** — React error boundaries, skeleton loaders for chat/activity
 
 ## Chat Enhancements
 
-- [ ] **File attachments in chat** â€” upload files, display inline (DB has `attachment_count` column ready)
-- [ ] **Message search** â€” search/filter chat history
+- [ ] **File attachments in chat** — upload files, display inline (DB has `attachment_count` column ready)
+- [ ] **Message search** — search/filter chat history
 
 ## Power User Features
 
-- [ ] **Command palette** â€” VS Code style `Ctrl+K` command launcher (currently `Ctrl+K` is kanban search)
-- [ ] **Data visualization** â€” charts for token usage trends, activity stats
+- [ ] **Command palette** — VS Code style `Ctrl+K` command launcher (currently `Ctrl+K` is kanban search)
+- [ ] **Data visualization** — charts for token usage trends, activity stats
 
 ## Technical Debt (Phase 7)
 
-- [ ] **Migrate tests to TypeScript** â€” 19 test files + 2 config files still in `.js`:
+- [ ] **Migrate tests to TypeScript** — 19 test files + 2 config files still in `.js`:
   - `tests/unit/` (3 files), `tests/integration/` (13 files), `tests/api/` (1 file), `tests/zzz-teardown.test.js`, `tests/setup.js`
   - `client/src/__tests__/App.test.js`, `client/src/components/__tests__/KanbanBoard.test.js`
   - Config: `jest.config.js`, `eslint.config.js`
