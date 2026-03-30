@@ -7,10 +7,10 @@ module.exports = {
   globals: {
     TextEncoder: require('util').TextEncoder,
     TextDecoder: require('util').TextDecoder,
+    // ts-jest diagnostics disabled — type checking is done separately by tsc in CI
+    'ts-jest': { diagnostics: false },
   },
   transform: {
-    // Extension source files can't be fully type-checked without the real OpenClaw SDK
-    '[/\\\\]openclaw-extension[/\\\\].*\\.(ts|tsx)$': ['ts-jest', { diagnostics: false }],
     '^.+\\.(ts|tsx)$': 'ts-jest',
     '^.+\\.(js|jsx)$': 'babel-jest',
   },
