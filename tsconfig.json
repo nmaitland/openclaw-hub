@@ -35,8 +35,7 @@
     "server/**/*",
     "tests/**/*",
     "src/**/*",
-    "scripts/**/*",
-    "openclaw-extension/**/*"
+    "scripts/**/*"
   ],
   "exclude": [
     "node_modules",
