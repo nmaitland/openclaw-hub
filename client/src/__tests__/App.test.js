@@ -157,13 +157,16 @@ describe('App Component', () => {
     window.removeEventListener = jest.fn((event) => {
       windowEventHandlers.delete(event);
     });
-    // Mock localStorage
-    Storage.prototype.getItem = jest.fn((key) => {
-      if (key === 'authToken') return 'test-token';
-      return null;
-    });
+    // Mock localStorage (still needed for legacy cleanup and other uses)
+    Storage.prototype.getItem = jest.fn(() => null);
     Storage.prototype.setItem = jest.fn();
     Storage.prototype.removeItem = jest.fn();
+
+    // Simulate authenticated state: set CSRF cookie (used by isAuthenticated())
+    Object.defineProperty(document, 'cookie', {
+      writable: true,
+      value: 'hub_csrf=test-csrf-token',
+    });
 
     // Default successful fetch responses
     fetch.mockImplementation((url) => {
@@ -248,12 +251,21 @@ describe('App Component', () => {
     });
   });
 
-  it('handles missing auth token state', () => {
-    Storage.prototype.getItem = jest.fn(() => null);
+  it('checks authentication state on mount', () => {
+    // Simulate unauthenticated: clear the CSRF cookie
+    Object.defineProperty(document, 'cookie', {
+      writable: true,
+      value: '',
+    });
 
+    // When not authenticated and not on /login, the app should not fetch data
     render(<App />);
 
-    expect(Storage.prototype.getItem).toHaveBeenCalledWith('authToken');
+    // No API calls should be made when unauthenticated
+    expect(fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining('/auth/me'),
+      expect.anything()
+    );
   });
 
   it('renders the mocked KanbanBoard component', async () => {

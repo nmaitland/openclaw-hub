@@ -4,6 +4,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { SessionStore, RefreshTokenStore, validateInput } from '../middleware/auth';
 import { authRateLimit, logSecurityEvent } from '../middleware/security';
 import { pool } from '../config/database';
+import { AUTH_COOKIE, REFRESH_COOKIE, setAuthCookies, clearAuthCookies } from '../lib/cookies';
 import logger from '../lib/logger';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -204,6 +205,7 @@ router.post('/login', authRateLimit, async (req: Request, res: Response) => {
       userId: user.id,
     });
 
+    setAuthCookies(res, token, refreshToken);
     res.json({
       message: 'Login successful',
       token,
@@ -246,10 +248,12 @@ router.post('/login', authRateLimit, async (req: Request, res: Response) => {
  */
 router.post('/logout', async (req: Request, res: Response) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    const { refreshToken } = req.body || {};
+    const token = req.headers.authorization?.replace('Bearer ', '')
+      || req.cookies?.[AUTH_COOKIE];
+    const refreshToken = req.body?.refreshToken || req.cookies?.[REFRESH_COOKIE];
 
     if (!token) {
+      clearAuthCookies(res);
       res.status(400).json({ error: 'No token provided' });
       return;
     }
@@ -273,6 +277,7 @@ router.post('/logout', async (req: Request, res: Response) => {
       });
     }
 
+    clearAuthCookies(res);
     res.json({ message: 'Logout successful' });
   } catch (error) {
     logger.error({ err: error }, 'Logout error');
@@ -309,7 +314,8 @@ router.post('/logout', async (req: Request, res: Response) => {
  */
 router.get('/validate', async (req: Request, res: Response) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const token = req.headers.authorization?.replace('Bearer ', '')
+      || req.cookies?.[AUTH_COOKIE];
 
     if (!token) {
       res.status(401).json({ error: 'No token provided' });
@@ -368,7 +374,8 @@ router.get('/validate', async (req: Request, res: Response) => {
  */
 router.get('/me', async (req: Request, res: Response) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const token = req.headers.authorization?.replace('Bearer ', '')
+      || req.cookies?.[AUTH_COOKIE];
 
     if (!token) {
       res.status(401).json({ error: 'No token provided' });
@@ -439,7 +446,8 @@ router.get('/me', async (req: Request, res: Response) => {
  */
 router.post('/change-password', async (req: Request, res: Response) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const token = req.headers.authorization?.replace('Bearer ', '')
+      || req.cookies?.[AUTH_COOKIE];
     const { currentPassword, newPassword } = req.body;
 
     if (!token || !currentPassword || !newPassword) {
@@ -614,6 +622,7 @@ router.post('/google', authRateLimit, async (req: Request, res: Response) => {
       metadata: { provider: 'google', googleEmail: payload.email },
     });
 
+    setAuthCookies(res, token, refreshToken);
     res.json({
       message: 'Login successful',
       token,
@@ -634,7 +643,8 @@ router.post('/google', authRateLimit, async (req: Request, res: Response) => {
 // POST /auth/refresh — exchange a refresh token for a new session token + rotated refresh token
 router.post('/refresh', authRateLimit, async (req: Request, res: Response) => {
   try {
-    const { refreshToken } = req.body;
+    // Accept refresh token from body (MCP/scripts) or httpOnly cookie (browser)
+    const refreshToken = req.body?.refreshToken || req.cookies?.[REFRESH_COOKIE];
 
     if (!refreshToken || typeof refreshToken !== 'string') {
       res.status(400).json({ error: 'refreshToken is required' });
@@ -670,6 +680,7 @@ router.post('/refresh', authRateLimit, async (req: Request, res: Response) => {
       req.ip
     );
 
+    setAuthCookies(res, token, rotated.newRefreshToken);
     res.json({ token, refreshToken: rotated.newRefreshToken });
   } catch (error) {
     logger.error({ err: error }, 'Token refresh error');

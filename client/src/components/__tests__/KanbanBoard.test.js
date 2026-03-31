@@ -112,9 +112,14 @@ describe('KanbanBoard Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     window.matchMedia = jest.fn().mockImplementation(() => createMatchMediaResult(false));
-    Storage.prototype.getItem = jest.fn(() => 'test-token');
+    Storage.prototype.getItem = jest.fn(() => null);
     Storage.prototype.setItem = jest.fn();
     Storage.prototype.removeItem = jest.fn();
+    // Simulate authenticated state via CSRF cookie
+    Object.defineProperty(document, 'cookie', {
+      writable: true,
+      value: 'hub_csrf=test-csrf-token',
+    });
     // Mock console.error to suppress error logs in tests
     jest.spyOn(console, 'error').mockImplementation(() => {});
   });
@@ -316,10 +321,8 @@ describe('KanbanBoard Component', () => {
     });
   });
 
-  it('clears auth token on 401 response', async () => {
-    // First call: /api/kanban returns 401
-    // Second call: /auth/refresh also fails (no valid refresh token)
-    // Third call: retry /api/kanban still 401
+  it('clears auth state on 401 response', async () => {
+    // All calls return 401 (initial + refresh attempt + retry)
     fetch.mockResolvedValue({
       ok: false,
       status: 401,
@@ -328,12 +331,15 @@ describe('KanbanBoard Component', () => {
     render(<KanbanBoard />);
 
     await waitFor(() => {
+      // Legacy localStorage cleanup
       expect(Storage.prototype.removeItem).toHaveBeenCalledWith('authToken');
       expect(Storage.prototype.removeItem).toHaveBeenCalledWith('refreshToken');
+      // CSRF cookie expired
+      expect(document.cookie).toContain('hub_csrf=; path=/; max-age=0');
     });
   });
 
-  it('sends auth token with fetch request', async () => {
+  it('sends credentials with fetch request', async () => {
     fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => mockKanbanResponse,
@@ -345,7 +351,7 @@ describe('KanbanBoard Component', () => {
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/kanban'),
         expect.objectContaining({
-          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          credentials: 'include',
         })
       );
     });

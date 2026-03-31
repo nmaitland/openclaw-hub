@@ -2,7 +2,7 @@
 import { io, Socket } from 'socket.io-client';
 import KanbanBoard from './components/KanbanBoard';
 import UserManagement from './components/UserManagement';
-import { apiFetch, getAuthToken, clearTokens } from './api';
+import { apiFetch, isAuthenticated, clearTokens } from './api';
 import type {
   Activity,
   ChatMessage,
@@ -176,11 +176,11 @@ function App() {
 
   // Check auth on mount and fetch current user
   useEffect(() => {
-    if (!getAuthToken() && window.location.pathname !== '/login') {
+    if (!isAuthenticated() && window.location.pathname !== '/login') {
       window.location.assign('/login');
       return;
     }
-    if (getAuthToken()) {
+    if (isAuthenticated()) {
       apiFetch('/auth/me')
         .then(res => res.ok ? res.json() : null)
         .then(data => {
@@ -195,7 +195,8 @@ function App() {
 
     const convId = `${currentUser.id}:${window.location.hostname}`;
     const newSocket = io(API_URL || window.location.origin, {
-      auth: { token: getAuthToken(), conversationId: convId },
+      auth: { conversationId: convId },
+      withCredentials: true,
       transports: ['websocket'],
     });
     setSocket(newSocket);
@@ -1046,11 +1047,9 @@ function App() {
           <button
             className="header-logout-btn"
             onClick={async () => {
-              const rt = localStorage.getItem('refreshToken');
               await apiFetch('/auth/logout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: rt ? JSON.stringify({ refreshToken: rt }) : undefined,
               }).catch(() => {});
               clearTokens();
               window.location.assign('/login');
