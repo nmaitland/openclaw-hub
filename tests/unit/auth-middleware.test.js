@@ -116,14 +116,12 @@ describe('validateInput', () => {
   });
 });
 
-describe('csrfProtection', () => {
-  let middleware;
+describe('csrfProtection (double-submit cookie)', () => {
   let req;
   let res;
   let next;
 
   beforeEach(() => {
-    middleware = csrfProtection();
     next = jest.fn();
     res = {
       status: jest.fn().mockReturnThis(),
@@ -132,37 +130,72 @@ describe('csrfProtection', () => {
   });
 
   it('skips GET requests', () => {
-    req = { method: 'GET', path: '/something' };
-    middleware(req, res, next);
+    req = { method: 'GET', headers: {}, cookies: {} };
+    csrfProtection(req, res, next);
     expect(next).toHaveBeenCalled();
   });
 
-  it('skips API paths', () => {
-    req = { method: 'POST', path: '/api/something' };
-    middleware(req, res, next);
+  it('skips HEAD and OPTIONS requests', () => {
+    req = { method: 'HEAD', headers: {}, cookies: {} };
+    csrfProtection(req, res, next);
+    expect(next).toHaveBeenCalled();
+
+    next.mockClear();
+    req = { method: 'OPTIONS', headers: {}, cookies: {} };
+    csrfProtection(req, res, next);
     expect(next).toHaveBeenCalled();
   });
 
-  it('returns 403 when CSRF token is missing', () => {
+  it('skips requests with Bearer token (not cookie-based)', () => {
     req = {
       method: 'POST',
-      path: '/auth/login',
       headers: { authorization: 'Bearer abc123' },
+      cookies: {},
     };
-    middleware(req, res, next);
-    expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({ error: 'CSRF token missing' });
+    csrfProtection(req, res, next);
+    expect(next).toHaveBeenCalled();
   });
 
-  it('returns 403 when session token is missing', () => {
+  it('skips requests without auth cookie', () => {
     req = {
       method: 'POST',
-      path: '/auth/login',
-      headers: { 'x-csrf-token': 'some-token' },
+      headers: {},
+      cookies: {},
     };
-    middleware(req, res, next);
+    csrfProtection(req, res, next);
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('returns 403 when cookie-authenticated but CSRF header is missing', () => {
+    req = {
+      method: 'POST',
+      headers: {},
+      cookies: { hub_auth: 'session-token', hub_csrf: 'csrf-value' },
+    };
+    csrfProtection(req, res, next);
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({ error: 'CSRF token missing' });
+    expect(res.json).toHaveBeenCalledWith({ error: 'CSRF token missing or invalid' });
+  });
+
+  it('returns 403 when CSRF header does not match cookie', () => {
+    req = {
+      method: 'POST',
+      headers: { 'x-csrf-token': 'wrong-value' },
+      cookies: { hub_auth: 'session-token', hub_csrf: 'csrf-value' },
+    };
+    csrfProtection(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: 'CSRF token missing or invalid' });
+  });
+
+  it('allows request when CSRF header matches cookie', () => {
+    req = {
+      method: 'POST',
+      headers: { 'x-csrf-token': 'csrf-value' },
+      cookies: { hub_auth: 'session-token', hub_csrf: 'csrf-value' },
+    };
+    csrfProtection(req, res, next);
+    expect(next).toHaveBeenCalled();
   });
 });
 

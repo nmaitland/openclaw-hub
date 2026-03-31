@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { Pool, PoolClient } from 'pg';
 import { execSync } from 'child_process';
 import { randomBytes } from 'crypto';
@@ -14,8 +15,9 @@ import swaggerSpec from './config/swagger';
 import logger from './lib/logger';
 import { asyncHandler, errorHandler } from './lib/errors';
 import { securityHeaders, generalRateLimit, authRateLimit, logSecurityEvent, securityErrorHandler } from './middleware/security';
-import { SessionStore, RefreshTokenStore, requireRole } from './middleware/auth';
+import { SessionStore, RefreshTokenStore, requireRole, csrfProtection } from './middleware/auth';
 import { pool, cleanupExpiredSessions, cleanupExpiredRefreshTokens, cleanupOldSecurityLogs } from './config/database';
+import { AUTH_COOKIE, setAuthCookies } from './lib/cookies';
 import type { ChatMessageData, RateLimitEntry, BuildInfo, SessionInfo, KanbanTaskRow } from './types';
 import authRouter from './routes/auth';
 import adminRouter from './routes/admin';
@@ -152,7 +154,9 @@ const requireAuth = async (req: Request, res: Response, next: NextFunction): Pro
     return;
   }
 
-  const token = req.headers.authorization?.replace('Bearer ', '');
+  // Accept token from Bearer header (MCP/scripts) or httpOnly cookie (browser)
+  const token = req.headers.authorization?.replace('Bearer ', '')
+    || req.cookies?.[AUTH_COOKIE];
   if (!token) {
     res.status(401).json({ error: 'Authentication required', loginUrl: '/login' });
     return;
@@ -462,8 +466,7 @@ app.get('/login', (_req: Request, res: Response) => {
 
             const data = await res.json();
             if (res.ok && data.token) {
-              localStorage.setItem('authToken', data.token);
-              if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+              // Tokens are in httpOnly cookies set by the server response
               window.location.href = '/';
               return;
             }
@@ -515,8 +518,7 @@ app.get('/login', (_req: Request, res: Response) => {
 
               const data = await res.json();
               if (res.ok && data.token) {
-                localStorage.setItem('authToken', data.token);
-                if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+                // Tokens are in httpOnly cookies set by the server response
                 window.location.href = '/';
                 return;
               }
@@ -563,8 +565,10 @@ app.use(cors({
   credentials: true
 }));
 
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(generalRateLimit);
+app.use(csrfProtection);
 
 const apiLoginRateLimit =
   process.env.NODE_ENV === 'test'
@@ -650,6 +654,8 @@ app.post('/api/login', apiLoginRateLimit, asyncHandler(async (req: Request, res:
         userAgent: req.get('User-Agent'),
         metadata: { provider: 'env_fallback' },
       });
+      // No refresh token for env fallback, but set auth cookie for browsers
+      res.cookie(AUTH_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: 24 * 60 * 60 * 1000 });
       res.json({ token, success: true });
       return;
     }
@@ -762,6 +768,8 @@ app.post('/api/login', apiLoginRateLimit, asyncHandler(async (req: Request, res:
     metadata: { provider: 'database_session' },
   });
 
+  // Set httpOnly cookies for browser clients; MCP/scripts use the JSON body
+  setAuthCookies(res, token, refreshToken);
   res.json({ token, refreshToken, success: true });
 }));
 
@@ -2737,8 +2745,13 @@ app.get('/api/activities', asyncHandler(async (req: Request, res: Response) => {
 // Socket.io with authentication and rate limiting
 io.use(async (socket: Socket, next: (err?: Error) => void) => {
   try {
-    // Verify auth token from handshake
-    const token = socket.handshake.auth?.token as string | undefined;
+    // Verify auth token from handshake auth (MCP/scripts) or cookies (browser)
+    const cookieHeader = socket.handshake.headers?.cookie || '';
+    const parsedCookies = Object.fromEntries(
+      cookieHeader.split(';').map(c => c.trim().split('=').map(s => decodeURIComponent(s)))
+    );
+    const token = (socket.handshake.auth?.token as string | undefined)
+      || parsedCookies[AUTH_COOKIE];
     if (!token) {
       return next(new Error('Authentication required'));
     }

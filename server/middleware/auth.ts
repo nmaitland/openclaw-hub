@@ -160,33 +160,41 @@ const validateInput = {
   },
 };
 
-// CSRF protection
-const csrfProtection = () => {
-  const tokens = new Map<string, string>();
+// CSRF protection — double-submit cookie pattern.
+// The server sets a non-httpOnly CSRF cookie on login. The browser JS reads
+// it and sends it back as the X-CSRF-Token header. An attacker on a different
+// origin cannot read the cookie (SameSite=Strict) so they cannot forge the
+// header. We only enforce CSRF when the request is authenticated via cookies,
+// not Bearer tokens (MCP/scripts don't use cookies, so CSRF doesn't apply).
+import { CSRF_COOKIE, AUTH_COOKIE } from '../lib/cookies';
 
-  return (req: Request, res: Response, next: NextFunction): void => {
-    // Skip CSRF for GET requests and authenticated API endpoints
-    if (req.method === 'GET' || req.path.startsWith('/api/')) {
-      next();
-      return;
-    }
-
-    const csrfToken = req.headers['x-csrf-token'] as string | undefined;
-    const sessionToken = (req.headers.authorization as string | undefined)?.replace('Bearer ', '');
-
-    if (!csrfToken || !sessionToken) {
-      res.status(403).json({ error: 'CSRF token missing' });
-      return;
-    }
-
-    const storedToken = tokens.get(sessionToken);
-    if (!storedToken || storedToken !== csrfToken) {
-      res.status(403).json({ error: 'Invalid CSRF token' });
-      return;
-    }
-
+const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
+  // Safe methods don't need CSRF protection
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
     next();
-  };
+    return;
+  }
+
+  // Only enforce CSRF for cookie-authenticated requests.
+  // If the request uses a Bearer token, CSRF is not applicable.
+  const hasBearerToken = req.headers.authorization?.startsWith('Bearer ');
+  const hasAuthCookie = Boolean(req.cookies?.[AUTH_COOKIE]);
+
+  if (hasBearerToken || !hasAuthCookie) {
+    next();
+    return;
+  }
+
+  // Double-submit check: cookie value must match header value
+  const cookieToken = req.cookies?.[CSRF_COOKIE];
+  const headerToken = req.headers['x-csrf-token'] as string | undefined;
+
+  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+    res.status(403).json({ error: 'CSRF token missing or invalid' });
+    return;
+  }
+
+  next();
 };
 
 // Rate limiting per user

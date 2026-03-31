@@ -37,9 +37,11 @@ const mockUsers = [
 
 beforeEach(() => {
   jest.clearAllMocks();
-  Storage.prototype.getItem = jest.fn((key) => {
-    if (key === 'authToken') return 'test-token';
-    return null;
+  Storage.prototype.getItem = jest.fn(() => null);
+  // Simulate authenticated state via CSRF cookie
+  Object.defineProperty(document, 'cookie', {
+    writable: true,
+    value: 'hub_csrf=test-csrf-token',
   });
 
   global.fetch = jest.fn((url) => {
