@@ -2,6 +2,7 @@
 import { io, Socket } from 'socket.io-client';
 import KanbanBoard from './components/KanbanBoard';
 import UserManagement from './components/UserManagement';
+import { apiFetch, getAuthToken, clearTokens } from './api';
 import type {
   Activity,
   ChatMessage,
@@ -72,9 +73,6 @@ const getMobileLayoutMatches = (): boolean => {
     window.matchMedia('(max-width: 768px)').matches;
 };
 
-const getAuthToken = (): string | null => {
-  return localStorage.getItem('authToken');
-};
 
 const getStandaloneDisplayMode = (): boolean => {
   if (typeof window === 'undefined') {
@@ -159,9 +157,7 @@ function App() {
     const fetchHistory = async () => {
       setIsLoadingUsageHistory(true);
       try {
-        const token = getAuthToken();
-        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await fetch(`${API_URL}/api/model-usage?limit=30`, { headers });
+        const res = await apiFetch('/api/model-usage?limit=30');
         if (!cancelled && res.ok) {
           const data = await res.json();
           setUsageHistory(data.snapshots ?? []);
@@ -180,15 +176,12 @@ function App() {
 
   // Check auth on mount and fetch current user
   useEffect(() => {
-    const token = getAuthToken();
-    if (!token && window.location.pathname !== '/login') {
+    if (!getAuthToken() && window.location.pathname !== '/login') {
       window.location.assign('/login');
       return;
     }
-    if (token) {
-      fetch(`${API_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+    if (getAuthToken()) {
+      apiFetch('/auth/me')
         .then(res => res.ok ? res.json() : null)
         .then(data => {
           if (data?.user) setCurrentUser(data.user);
@@ -275,16 +268,8 @@ function App() {
   }, [currentUser]);
 
   const fetchData = async () => {
-    const token = getAuthToken();
     try {
-      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const statusRes = await fetch(`${API_URL}/api/status`, { headers });
-
-      if (statusRes.status === 401) {
-        localStorage.removeItem('authToken');
-        window.location.assign('/login');
-        return;
-      }
+      const statusRes = await apiFetch('/api/status');
 
       const statusData: StatusResponse = await statusRes.json();
       setStatus(statusData);
@@ -292,9 +277,9 @@ function App() {
       const user = currentUserRef.current;
       const convId = user ? `${user.id}:${window.location.hostname}` : '';
       const messagesUrl = convId
-        ? `${API_URL}/api/messages?limit=50&conversationId=${encodeURIComponent(convId)}`
-        : `${API_URL}/api/messages?limit=50`;
-      const messagesRes = await fetch(messagesUrl, { headers });
+        ? `/api/messages?limit=50&conversationId=${encodeURIComponent(convId)}`
+        : `/api/messages?limit=50`;
+      const messagesRes = await apiFetch(messagesUrl);
       if (messagesRes.ok) {
         const messageData: ChatMessage[] = await messagesRes.json();
         setMessages((prev) => {
@@ -352,15 +337,12 @@ function App() {
 
     setIsLoadingActivities(true);
     try {
-      const token = getAuthToken();
-      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-
-      let url = `${API_URL}/api/activities?limit=20`;
+      let url = `/api/activities?limit=20`;
       if (before) {
         url += `&before=${encodeURIComponent(before)}`;
       }
 
-      const res = await fetch(url, { headers });
+      const res = await apiFetch(url);
       if (res.ok) {
         const data = await res.json();
         if (before) {
@@ -442,7 +424,7 @@ function App() {
   useEffect(() => {
     const fetchBuildInfo = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/build`);
+        const res = await apiFetch('/api/build');
         if (res.ok) {
           const data: BuildInfo = await res.json();
           setBuildInfo(data);
@@ -565,16 +547,10 @@ function App() {
 
   // Reaction picker functions
   const sendReaction = async (messageId: string, emoji: string) => {
-    const token = getAuthToken();
-    if (!token) return;
-
     try {
-      const res = await fetch(`${API_URL}/api/service/messages/${messageId}/reactions`, {
+      const res = await apiFetch(`/api/service/messages/${messageId}/reactions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reactor: currentUser?.name || 'Unknown', emoji }),
       });
 
@@ -589,16 +565,10 @@ function App() {
   };
 
   const removeReaction = async (messageId: string, emoji: string) => {
-    const token = getAuthToken();
-    if (!token) return;
-
     try {
-      const res = await fetch(`${API_URL}/api/service/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, {
+      const res = await apiFetch(`/api/service/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reactor: currentUser?.name || 'Unknown' }),
       });
 
@@ -1076,14 +1046,13 @@ function App() {
           <button
             className="header-logout-btn"
             onClick={async () => {
-              const token = getAuthToken();
-              if (token) {
-                await fetch('/auth/logout', {
-                  method: 'POST',
-                  headers: { Authorization: `Bearer ${token}` },
-                }).catch(() => {});
-              }
-              localStorage.removeItem('authToken');
+              const rt = localStorage.getItem('refreshToken');
+              await apiFetch('/auth/logout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: rt ? JSON.stringify({ refreshToken: rt }) : undefined,
+              }).catch(() => {});
+              clearTokens();
               window.location.assign('/login');
             }}
             title="Log out"

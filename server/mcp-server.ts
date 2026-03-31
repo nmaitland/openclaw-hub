@@ -10,15 +10,20 @@
  *
  * Run: npx ts-node server/mcp-server.ts
  * Or via Claude Code MCP config (stdio transport).
+ *
+ * Auth: Set HUB_USERNAME and HUB_PASSWORD in the MCP client env
+ * (e.g. .mcp.json). On first run the server logs in and stores a
+ * refresh token at ~/.swissclaw-refresh-token which auto-rotates
+ * on subsequent runs.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { io, Socket } from 'socket.io-client';
 import { z } from 'zod';
+import { ensureHubAuth } from '../scripts/lib/hub-auth';
 
 const BASE_URL = process.env.HUB_URL || 'http://localhost:3001';
-const AUTH_TOKEN = process.env.HUB_AUTH_TOKEN || '';
 
 // Message buffer for chat_listen
 interface BufferedMessage {
@@ -35,29 +40,43 @@ let messageBuffer: BufferedMessage[] = [];
 let socketClient: Socket | null = null;
 let isSocketConnected = false;
 
-// Helper: make authenticated API requests
+// Cached access token for this process lifetime. Cleared on 401 to force refresh.
+let cachedToken: string | null = null;
+
+async function getToken(): Promise<string> {
+  if (!cachedToken) {
+    cachedToken = await ensureHubAuth();
+  }
+  return cachedToken;
+}
+
+// Helper: make authenticated API requests with automatic token refresh on 401
 async function api(
   path: string,
   options: { method?: string; body?: unknown } = {}
 ): Promise<unknown> {
   const { method = 'GET', body } = options;
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+
+  const makeRequest = async (token: string) => {
+    return fetch(`${BASE_URL}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
   };
 
-  // Use bearer auth for all endpoints
-  if (AUTH_TOKEN) {
-    headers['Authorization'] = `Bearer ${AUTH_TOKEN}`;
-  }
-  if (!AUTH_TOKEN) {
-    throw new Error('HUB_AUTH_TOKEN is required for authenticated API endpoints.');
-  }
+  const token = await getToken();
+  let res = await makeRequest(token);
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  if (res.status === 401) {
+    // Token expired — clear cache, refresh via stored refresh token, retry once
+    cachedToken = null;
+    cachedToken = await ensureHubAuth(true);
+    res = await makeRequest(cachedToken);
+  }
 
   if (!res.ok) {
     const text = await res.text();
@@ -68,14 +87,17 @@ async function api(
 }
 
 // Initialize Socket.io client for real-time chat
-function initSocketClient(): void {
-  if (!AUTH_TOKEN) {
-    console.error('HUB_AUTH_TOKEN not set. Socket.io client cannot connect.');
+async function initSocketClient(): Promise<void> {
+  let token: string;
+  try {
+    token = await getToken();
+  } catch (err) {
+    console.error('Failed to get auth token for Socket.io:', err);
     return;
   }
 
   socketClient = io(BASE_URL, {
-    auth: { token: AUTH_TOKEN },
+    auth: { token },
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 5,
@@ -171,7 +193,7 @@ server.tool(
   async ({ since }) => {
     if (!isSocketConnected) {
       return {
-        content: [{ type: 'text', text: JSON.stringify({ error: 'Socket.io not connected. Check HUB_AUTH_TOKEN is set and Hub is running.' }) }],
+        content: [{ type: 'text', text: JSON.stringify({ error: 'Socket.io not connected. Check Hub is running and auth credentials are set.' }) }],
       };
     }
 
@@ -409,7 +431,7 @@ server.tool(
 
 async function main() {
   // Initialize Socket.io client before starting MCP server
-  initSocketClient();
+  await initSocketClient();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

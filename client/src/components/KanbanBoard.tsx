@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { apiFetch } from '../api';
 import {
   DndContext,
   DragOverlay,
@@ -25,7 +26,6 @@ import type {
 } from '../types';
 import './KanbanBoard.css';
 
-const API_URL = process.env.REACT_APP_API_URL || '';
 const MOBILE_LAYOUT_QUERY = '(max-width: 768px)';
 
 const COLUMNS: (KanbanColumnDef & { special?: boolean })[] = [
@@ -37,7 +37,6 @@ const COLUMNS: (KanbanColumnDef & { special?: boolean })[] = [
   { name: 'waiting', displayName: 'Waiting', emoji: '\u{23F8}\u{FE0F}', position: 5, special: true },
 ];
 
-const getAuthToken = (): string | null => localStorage.getItem('authToken');
 const getMobileLayoutMatches = (): boolean => {
   return typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
@@ -307,18 +306,7 @@ function KanbanBoard({
 
   const fetchKanbanData = useCallback(async () => {
     try {
-      const token = getAuthToken();
-      const headers: Record<string, string> = token
-        ? { Authorization: `Bearer ${token}` }
-        : {};
-
-      const res = await fetch(`${API_URL}/api/kanban`, { headers });
-
-      if (res.status === 401) {
-        localStorage.removeItem('authToken');
-        window.location.assign('/login');
-        return;
-      }
+      const res = await apiFetch('/api/kanban');
       if (!res.ok) throw new Error('Failed to fetch kanban data');
 
       const data = await res.json();
@@ -536,12 +524,6 @@ function KanbanBoard({
 
     // API call
     try {
-      const token = getAuthToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Authorization: token ? `Bearer ${token}` : '',
-      };
-
       const body: any = { columnName: targetColumn };
       if (sourceColumn === targetColumn && targetTaskId) {
         // Intra-column reorder - send targetTaskId and insertAfter flag
@@ -549,9 +531,9 @@ function KanbanBoard({
         body.insertAfter = insertAfter;
       }
 
-      const res = await fetch(`${API_URL}/api/kanban/tasks/${active.id}`, {
+      const res = await apiFetch(`/api/kanban/tasks/${active.id}`, {
         method: 'PUT',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
 
@@ -583,15 +565,8 @@ function KanbanBoard({
 
   const handleDeleteTask = async (taskId: string | number) => {
     try {
-      const token = getAuthToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Authorization: token ? `Bearer ${token}` : '',
-      };
-
-      const res = await fetch(`${API_URL}/api/kanban/tasks/${taskId}`, {
+      const res = await apiFetch(`/api/kanban/tasks/${taskId}`, {
         method: 'DELETE',
-        headers,
       });
 
       if (!res.ok) throw new Error('Failed to delete task');
@@ -610,12 +585,6 @@ function KanbanBoard({
     e.preventDefault();
 
     try {
-      const token = getAuthToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Authorization: token ? `Bearer ${token}` : '',
-      };
-
       const taskData = {
         columnName: addColumnName,
         title: newTask.title,
@@ -629,14 +598,14 @@ function KanbanBoard({
       };
 
       const url = editingTask
-        ? `${API_URL}/api/kanban/tasks/${editingTask.id}`
-        : `${API_URL}/api/kanban/tasks`;
-      
+        ? `/api/kanban/tasks/${editingTask.id}`
+        : `/api/kanban/tasks`;
+
       const method = editingTask ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(taskData),
       });
 

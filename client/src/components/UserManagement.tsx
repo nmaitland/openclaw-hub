@@ -1,17 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { AdminUser } from '../types';
+import { apiFetch } from '../api';
 import './UserManagement.css';
-
-const API_URL = process.env.REACT_APP_API_URL || '';
-
-const getAuthToken = (): string | null => localStorage.getItem('authToken');
-
-const authHeaders = (): Record<string, string> => {
-  const token = getAuthToken();
-  return token
-    ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-    : { 'Content-Type': 'application/json' };
-};
 
 const formatRelativeTime = (dateStr: string | null): string => {
   if (!dateStr) return 'Never';
@@ -68,7 +58,7 @@ export default function UserManagement({ isOpen, onClose, currentUserId }: UserM
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/admin/users`, { headers: authHeaders() });
+      const res = await apiFetch('/api/admin/users');
       if (!res.ok) {
         setError(res.status === 403 ? 'Access denied' : 'Failed to load users');
         return;
@@ -106,9 +96,9 @@ export default function UserManagement({ isOpen, onClose, currentUserId }: UserM
       if (newPassword) body.password = newPassword;
       if (newGoogleId.trim()) body.googleId = newGoogleId.trim();
 
-      const res = await fetch(`${API_URL}/api/admin/users`, {
+      const res = await apiFetch('/api/admin/users', {
         method: 'POST',
-        headers: authHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
 
@@ -134,9 +124,9 @@ export default function UserManagement({ isOpen, onClose, currentUserId }: UserM
 
   const handlePatchUser = async (userId: string, updates: Record<string, string>) => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+      const res = await apiFetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
-        headers: authHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
       if (res.ok) {
@@ -171,9 +161,8 @@ export default function UserManagement({ isOpen, onClose, currentUserId }: UserM
 
   const handleUnlock = async (userId: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/users/${userId}/unlock`, {
+      const res = await apiFetch(`/api/admin/users/${userId}/unlock`, {
         method: 'POST',
-        headers: authHeaders(),
       });
       if (res.ok) {
         fetchUsers();
@@ -188,9 +177,8 @@ export default function UserManagement({ isOpen, onClose, currentUserId }: UserM
 
   const handleDelete = async (userId: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+      const res = await apiFetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
-        headers: authHeaders(),
       });
       if (res.ok) {
         setDeleteConfirm(null);

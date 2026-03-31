@@ -67,14 +67,14 @@ export async function loadCredentials(): Promise<{
   }
 
   // Fall back to environment variables
-  const username = process.env.SWISSCLAW_USERNAME?.trim();
-  const password = process.env.SWISSCLAW_PASSWORD?.trim();
+  const username = process.env.HUB_USERNAME?.trim();
+  const password = process.env.HUB_PASSWORD?.trim();
 
   if (!username || !password) {
     throw new Error(
       "Hub credentials not configured. Either:\n" +
         `  1. Create a credential provider at ${providerPath}\n` +
-        "  2. Set SWISSCLAW_USERNAME and SWISSCLAW_PASSWORD environment variables",
+        "  2. Set HUB_USERNAME and HUB_PASSWORD environment variables",
     );
   }
 
