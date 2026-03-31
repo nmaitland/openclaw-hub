@@ -449,12 +449,14 @@ export async function startHubGateway(
         }
 
         // Mark terminal state after dispatch
+        // IMPORTANT: Check delivered FIRST - if response was sent, state is "done"
+        // regardless of what happened after (timeout, error, etc.)
         const isCancelled = cancelledMessageIds.has(String(msg.id));
         let terminalState: string;
-        if (dispatchFailed) {
-          terminalState = "failed";
-        } else if (delivered) {
+        if (delivered) {
           terminalState = "done";
+        } else if (dispatchFailed) {
+          terminalState = "failed";
         } else if (isCancelled) {
           terminalState = "cancelled";
         } else {
