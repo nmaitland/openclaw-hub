@@ -1763,8 +1763,9 @@ if (process.env.NODE_ENV === 'production') {
     fs.existsSync(path.join(process.cwd(), dir, 'index.html'))
   ) || 'client/dist';
 
-  // Serve built frontend assets
+  // Serve built frontend assets (index: false so / falls through to catch-all for config injection)
   app.use(express.static(clientBuildDir, {
+    index: false,
     etag: true,
     maxAge: '1y',
     immutable: true,
