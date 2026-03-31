@@ -16,8 +16,8 @@ import swaggerSpec from './config/swagger';
 import logger from './lib/logger';
 import { asyncHandler, errorHandler } from './lib/errors';
 import { authRateLimit, logSecurityEvent } from './middleware/security';
-import { SessionStore, requireRole } from './middleware/auth';
-import { pool } from './config/database';
+import { SessionStore, RefreshTokenStore, requireRole } from './middleware/auth';
+import { pool, cleanupExpiredSessions, cleanupExpiredRefreshTokens, cleanupOldSecurityLogs } from './config/database';
 import type { ChatMessageData, RateLimitEntry, BuildInfo, SessionInfo, KanbanTaskRow } from './types';
 import authRouter from './routes/auth';
 import adminRouter from './routes/admin';
@@ -140,6 +140,7 @@ const sessions = new Set<string>();
 
 // Database-backed session store
 const sessionStore = new SessionStore(pool);
+const refreshTokenStore = new RefreshTokenStore(pool);
 
 // Auth middleware - uses database-backed sessions
 const requireAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -464,6 +465,7 @@ app.get('/login', (_req: Request, res: Response) => {
             const data = await res.json();
             if (res.ok && data.token) {
               localStorage.setItem('authToken', data.token);
+              if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
               window.location.href = '/';
               return;
             }
@@ -516,6 +518,7 @@ app.get('/login', (_req: Request, res: Response) => {
               const data = await res.json();
               if (res.ok && data.token) {
                 localStorage.setItem('authToken', data.token);
+                if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
                 window.location.href = '/';
                 return;
               }
@@ -763,12 +766,11 @@ app.post('/api/login', apiLoginRateLimit, asyncHandler(async (req: Request, res:
     );
   }
 
-  // Create database session
-  const token = await sessionStore.createSession(
-    user.id,
-    req.get('User-Agent'),
-    req.ip
-  );
+  // Create database session and refresh token
+  const [token, refreshToken] = await Promise.all([
+    sessionStore.createSession(user.id, req.get('User-Agent'), req.ip),
+    refreshTokenStore.createRefreshToken(user.id),
+  ]);
 
   // Update last login
   await pool.query(
@@ -786,7 +788,7 @@ app.post('/api/login', apiLoginRateLimit, asyncHandler(async (req: Request, res:
     metadata: { provider: 'database_session' },
   });
 
-  res.json({ token, success: true });
+  res.json({ token, refreshToken, success: true });
 }));
 
 const hasServiceAccess = async (req: Request): Promise<boolean> => {
@@ -3087,6 +3089,14 @@ const PORT = process.env.PORT || 3001;
 if (require.main === module) {
   httpServer.listen(PORT, () => {
     logger.info({ port: PORT, env: process.env.NODE_ENV || 'development' }, `${getAppConfig().appName} server running`);
+
+    // Periodic cleanup of expired tokens and old logs (every 6 hours)
+    const CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
+    setInterval(async () => {
+      await cleanupExpiredSessions();
+      await cleanupExpiredRefreshTokens();
+      await cleanupOldSecurityLogs();
+    }, CLEANUP_INTERVAL_MS);
   });
 
   // Graceful shutdown

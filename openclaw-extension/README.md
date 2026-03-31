@@ -62,7 +62,7 @@ The extension logs in to the Hub using a username and password, then caches the 
 Credentials are resolved in this order:
 
 1. **Credential provider script** — the extension runs `openclaw config get agents.defaults.workspace` at startup to locate your workspace, then looks for `<workspace>/.openclaw/credentials/swissclaw-hub.ts`. If found, its `getCredentials()` method is called. This lets you integrate with any secrets manager. See [Credential Provider](#credential-provider) below.
-2. **Environment variables** — `SWISSCLAW_USERNAME` and `SWISSCLAW_PASSWORD`.
+2. **Environment variables** — `HUB_USERNAME` and `HUB_PASSWORD`.
 
 If neither is configured, the extension will throw a descriptive error on startup.
 
@@ -82,8 +82,8 @@ Example using environment variables (same as the built-in fallback, useful as a 
 export default {
   getCredentials() {
     return Promise.resolve({
-      username: process.env.SWISSCLAW_USERNAME!,
-      password: process.env.SWISSCLAW_PASSWORD!,
+      username: process.env.HUB_USERNAME!,
+      password: process.env.HUB_PASSWORD!,
     });
   },
 };

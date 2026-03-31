@@ -10,13 +10,21 @@ if (!process.env.HUB_URL) {
 }
 export const HUB_URL = process.env.HUB_URL;
 export const HUB_TOKEN_FILE = path.join(os.homedir(), '.swissclaw-token');
+export const HUB_REFRESH_TOKEN_FILE = path.join(os.homedir(), '.swissclaw-refresh-token');
 const HUB_TOKEN_LOCK_FILE = `${HUB_TOKEN_FILE}.lock`;
 const LOCK_TIMEOUT_MS = 30_000;
 const LOCK_STALE_MS = 120_000;
 
 interface LoginResponse {
   token?: string;
+  refreshToken?: string;
   success?: boolean;
+  error?: string;
+}
+
+interface RefreshResponse {
+  token?: string;
+  refreshToken?: string;
   error?: string;
 }
 
@@ -86,10 +94,6 @@ const withTokenLock = async <T>(fn: () => Promise<T>): Promise<T> => {
 };
 
 export const loadHubToken = (): string | null => {
-  if (process.env.HUB_AUTH_TOKEN && process.env.HUB_AUTH_TOKEN.trim()) {
-    return process.env.HUB_AUTH_TOKEN.trim();
-  }
-
   try {
     if (fs.existsSync(HUB_TOKEN_FILE)) {
       return fs.readFileSync(HUB_TOKEN_FILE, 'utf-8').trim() || null;
@@ -114,6 +118,35 @@ export const clearHubToken = (): void => {
   }
 };
 
+export const loadRefreshToken = (): string | null => {
+  if (process.env.HUB_REFRESH_TOKEN && process.env.HUB_REFRESH_TOKEN.trim()) {
+    return process.env.HUB_REFRESH_TOKEN.trim();
+  }
+
+  try {
+    if (fs.existsSync(HUB_REFRESH_TOKEN_FILE)) {
+      return fs.readFileSync(HUB_REFRESH_TOKEN_FILE, 'utf-8').trim() || null;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
+export const saveRefreshToken = (token: string): void => {
+  fs.writeFileSync(HUB_REFRESH_TOKEN_FILE, token, { mode: 0o600 });
+};
+
+export const clearRefreshToken = (): void => {
+  try {
+    if (fs.existsSync(HUB_REFRESH_TOKEN_FILE)) {
+      fs.unlinkSync(HUB_REFRESH_TOKEN_FILE);
+    }
+  } catch {
+    // ignore
+  }
+};
+
 export const validateHubToken = async (token: string): Promise<boolean> => {
   try {
     const response = await fetch(`${HUB_URL}/api/status`, {
@@ -125,11 +158,33 @@ export const validateHubToken = async (token: string): Promise<boolean> => {
   }
 };
 
+// Exchange a refresh token for a new session token + rotated refresh token.
+// Returns the new access token, or null if the refresh token is invalid.
+export const refreshHubTokens = async (refreshToken: string): Promise<string | null> => {
+  try {
+    const response = await fetch(`${HUB_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as RefreshResponse;
+    if (!data.token || !data.refreshToken) return null;
+
+    saveHubToken(data.token);
+    saveRefreshToken(data.refreshToken);
+    return data.token;
+  } catch {
+    return null;
+  }
+};
+
 export const loginToHub = async (): Promise<string> => {
-  const username = process.env.SWISSCLAW_USERNAME;
-  const password = process.env.SWISSCLAW_PASSWORD;
+  const username = process.env.HUB_USERNAME;
+  const password = process.env.HUB_PASSWORD;
   if (!username || !password) {
-    throw new Error('SWISSCLAW_USERNAME and SWISSCLAW_PASSWORD must be set for login');
+    throw new Error('HUB_USERNAME and HUB_PASSWORD must be set for login');
   }
 
   const response = await fetch(`${HUB_URL}/api/login`, {
@@ -143,28 +198,33 @@ export const loginToHub = async (): Promise<string> => {
   }
 
   saveHubToken(data.token);
+  if (data.refreshToken) {
+    saveRefreshToken(data.refreshToken);
+  }
   return data.token;
 };
 
-export const ensureHubAuth = async (forceLogin: boolean = false): Promise<string> => {
-  if (process.env.HUB_AUTH_TOKEN && process.env.HUB_AUTH_TOKEN.trim()) {
-    return process.env.HUB_AUTH_TOKEN.trim();
-  }
-
+export const ensureHubAuth = async (skipCachedToken: boolean = false): Promise<string> => {
   return withTokenLock(async () => {
-    if (forceLogin) {
-      clearHubToken();
+    // Try cached access token first (unless skipping due to a 401)
+    if (!skipCachedToken) {
+      const token = loadHubToken();
+      if (token && await validateHubToken(token)) {
+        return token;
+      }
+      if (token) clearHubToken();
     }
 
-    const token = loadHubToken();
-    if (token && await validateHubToken(token)) {
-      return token;
+    // Try refresh token before full login
+    const refreshToken = loadRefreshToken();
+    if (refreshToken) {
+      const newToken = await refreshHubTokens(refreshToken);
+      if (newToken) return newToken;
+      // Refresh token was invalid — clear it and fall through to full login
+      clearRefreshToken();
     }
 
-    if (token) {
-      clearHubToken();
-    }
-
+    // Full login with credentials
     return loginToHub();
   });
 };

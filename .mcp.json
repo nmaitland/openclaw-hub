@@ -4,7 +4,9 @@
       "command": "npx",
       "args": ["ts-node", "server/mcp-server.ts"],
       "env": {
-        "HUB_URL": "http://localhost:3001"
+        "HUB_URL": "http://localhost:3001",
+        "HUB_USERNAME": "your-hub-username",
+        "HUB_PASSWORD": "your-hub-password"
       }
     }
   }

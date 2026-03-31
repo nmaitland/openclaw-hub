@@ -123,6 +123,19 @@ const cleanupExpiredSessions = async (): Promise<number> => {
   }
 };
 
+const cleanupExpiredRefreshTokens = async (): Promise<number> => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM refresh_tokens WHERE expires_at < NOW() OR revoked_at IS NOT NULL'
+    );
+    logger.info({ count: result.rowCount }, 'Cleaned up expired refresh tokens');
+    return result.rowCount ?? 0;
+  } catch (error) {
+    logger.error({ err: error }, 'Error cleaning up expired refresh tokens');
+    return 0;
+  }
+};
+
 const cleanupOldSecurityLogs = async (daysToKeep = 30): Promise<number> => {
   try {
     const result = await pool.query(
@@ -164,6 +177,7 @@ export {
   initializeDatabase,
   checkDatabaseHealth,
   cleanupExpiredSessions,
+  cleanupExpiredRefreshTokens,
   cleanupOldSecurityLogs,
   closeDatabaseConnection,
   getDatabaseConfig,

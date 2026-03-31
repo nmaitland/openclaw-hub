@@ -317,7 +317,10 @@ describe('KanbanBoard Component', () => {
   });
 
   it('clears auth token on 401 response', async () => {
-    fetch.mockResolvedValueOnce({
+    // First call: /api/kanban returns 401
+    // Second call: /auth/refresh also fails (no valid refresh token)
+    // Third call: retry /api/kanban still 401
+    fetch.mockResolvedValue({
       ok: false,
       status: 401,
     });
@@ -326,6 +329,7 @@ describe('KanbanBoard Component', () => {
 
     await waitFor(() => {
       expect(Storage.prototype.removeItem).toHaveBeenCalledWith('authToken');
+      expect(Storage.prototype.removeItem).toHaveBeenCalledWith('refreshToken');
     });
   });
 

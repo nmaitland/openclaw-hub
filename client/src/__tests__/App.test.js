@@ -219,6 +219,7 @@ describe('App Component', () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/build'),
+        expect.any(Object),
       );
     });
 

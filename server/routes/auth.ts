@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { OAuth2Client } from 'google-auth-library';
-import { SessionStore, validateInput } from '../middleware/auth';
+import { SessionStore, RefreshTokenStore, validateInput } from '../middleware/auth';
 import { authRateLimit, logSecurityEvent } from '../middleware/security';
 import { pool } from '../config/database';
 import logger from '../lib/logger';
@@ -11,8 +11,9 @@ const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : nul
 
 const router = express.Router();
 
-// Initialize session store
+// Initialize session and refresh token stores
 const sessionStore = new SessionStore(pool);
+const refreshTokenStore = new RefreshTokenStore(pool);
 
 /**
  * @swagger
@@ -182,12 +183,11 @@ router.post('/login', authRateLimit, async (req: Request, res: Response) => {
       );
     }
 
-    // Create session
-    const token = await sessionStore.createSession(
-      user.id,
-      req.get('User-Agent'),
-      req.ip
-    );
+    // Create session and refresh token
+    const [token, refreshToken] = await Promise.all([
+      sessionStore.createSession(user.id, req.get('User-Agent'), req.ip),
+      refreshTokenStore.createRefreshToken(user.id),
+    ]);
 
     // Update last login
     await pool.query(
@@ -207,6 +207,7 @@ router.post('/login', authRateLimit, async (req: Request, res: Response) => {
     res.json({
       message: 'Login successful',
       token,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -246,6 +247,7 @@ router.post('/login', authRateLimit, async (req: Request, res: Response) => {
 router.post('/logout', async (req: Request, res: Response) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
+    const { refreshToken } = req.body || {};
 
     if (!token) {
       res.status(400).json({ error: 'No token provided' });
@@ -255,6 +257,11 @@ router.post('/logout', async (req: Request, res: Response) => {
     const session = await sessionStore.validateSession(token);
     if (session) {
       await sessionStore.revokeSession(token);
+
+      // Revoke the refresh token if provided
+      if (refreshToken && typeof refreshToken === 'string') {
+        await refreshTokenStore.revokeToken(refreshToken);
+      }
 
       await logSecurityEvent(pool, {
         type: 'auth_logout',
@@ -484,8 +491,9 @@ router.post('/change-password', async (req: Request, res: Response) => {
       [newPasswordHash, session.userId]
     );
 
-    // Revoke all other sessions for security
+    // Revoke all sessions and refresh tokens for security
     await sessionStore.revokeAllUserSessions(session.userId);
+    await refreshTokenStore.revokeAllUserTokens(session.userId);
 
     await logSecurityEvent(pool, {
       type: 'password_changed',
@@ -584,12 +592,11 @@ router.post('/google', authRateLimit, async (req: Request, res: Response) => {
       );
     }
 
-    // Create session
-    const token = await sessionStore.createSession(
-      user.id,
-      req.get('User-Agent'),
-      req.ip
-    );
+    // Create session and refresh token
+    const [token, refreshToken] = await Promise.all([
+      sessionStore.createSession(user.id, req.get('User-Agent'), req.ip),
+      refreshTokenStore.createRefreshToken(user.id),
+    ]);
 
     // Update last login and reset failed attempts
     await pool.query(
@@ -610,6 +617,7 @@ router.post('/google', authRateLimit, async (req: Request, res: Response) => {
     res.json({
       message: 'Login successful',
       token,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -619,6 +627,52 @@ router.post('/google', authRateLimit, async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error({ err: error }, 'Google login error');
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /auth/refresh — exchange a refresh token for a new session token + rotated refresh token
+router.post('/refresh', authRateLimit, async (req: Request, res: Response) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken || typeof refreshToken !== 'string') {
+      res.status(400).json({ error: 'refreshToken is required' });
+      return;
+    }
+
+    const rotated = await refreshTokenStore.validateAndRotate(refreshToken);
+    if (!rotated) {
+      res.status(401).json({ error: 'Invalid or expired refresh token' });
+      return;
+    }
+
+    // Verify user exists and isn't locked
+    const userResult = await pool.query(
+      'SELECT id, locked_until FROM users WHERE id = $1',
+      [rotated.userId]
+    );
+    if (userResult.rows.length === 0) {
+      res.status(401).json({ error: 'User not found' });
+      return;
+    }
+    const user = userResult.rows[0];
+    if (user.locked_until && new Date(user.locked_until as string) > new Date()) {
+      // Revoke the new refresh token too since the account is locked
+      await refreshTokenStore.revokeToken(rotated.newRefreshToken);
+      res.status(423).json({ error: 'Account is locked' });
+      return;
+    }
+
+    const token = await sessionStore.createSession(
+      rotated.userId,
+      req.get('User-Agent'),
+      req.ip
+    );
+
+    res.json({ token, refreshToken: rotated.newRefreshToken });
+  } catch (error) {
+    logger.error({ err: error }, 'Token refresh error');
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -256,8 +256,71 @@ const requireRole = (...allowedRoles: string[]) => {
   };
 };
 
+// Refresh tokens: long-lived (30 days), single-use rotation
+class RefreshTokenStore {
+  private pool: Pool;
+  private readonly EXPIRY_DAYS = 30;
+
+  constructor(pool: Pool) {
+    this.pool = pool;
+  }
+
+  async createRefreshToken(userId: string): Promise<string> {
+    const token = generateToken();
+    const expiresAt = new Date(Date.now() + this.EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+    await this.pool.query(
+      `INSERT INTO refresh_tokens (id, user_id, token, expires_at, created_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, NOW())`,
+      [userId, token, expiresAt]
+    );
+    return token;
+  }
+
+  // Atomically revoke the old token and issue a new one (rotation).
+  // Returns null if the token is invalid/expired/already revoked.
+  async validateAndRotate(token: string): Promise<{ userId: string; newRefreshToken: string } | null> {
+    try {
+      const result = await this.pool.query(
+        `UPDATE refresh_tokens SET revoked_at = NOW()
+         WHERE token = $1 AND expires_at > NOW() AND revoked_at IS NULL
+         RETURNING user_id`,
+        [token]
+      );
+      if (result.rows.length === 0) return null;
+
+      const userId = result.rows[0].user_id as string;
+      const newRefreshToken = await this.createRefreshToken(userId);
+      return { userId, newRefreshToken };
+    } catch (error) {
+      logger.error({ err: error }, 'Error rotating refresh token');
+      return null;
+    }
+  }
+
+  async revokeToken(token: string): Promise<void> {
+    await this.pool.query(
+      'UPDATE refresh_tokens SET revoked_at = NOW() WHERE token = $1',
+      [token]
+    );
+  }
+
+  async revokeAllUserTokens(userId: string): Promise<void> {
+    await this.pool.query(
+      'UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1',
+      [userId]
+    );
+  }
+
+  async cleanupExpired(): Promise<void> {
+    await this.pool.query(
+      'DELETE FROM refresh_tokens WHERE expires_at < NOW() OR revoked_at IS NOT NULL'
+    );
+  }
+}
+
 export {
   SessionStore,
+  RefreshTokenStore,
   validateInput,
   csrfProtection,
   createUserRateLimit,
