@@ -460,7 +460,6 @@ app.get('/login', (_req: Request, res: Response) => {
           try {
             const res = await fetch('/api/login', {
               method: 'POST',
-              credentials: 'omit',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ username, password })
             });
@@ -513,7 +512,6 @@ app.get('/login', (_req: Request, res: Response) => {
             try {
               const res = await fetch('/auth/google', {
                 method: 'POST',
-                credentials: 'omit',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ idToken: response.credential })
               });
