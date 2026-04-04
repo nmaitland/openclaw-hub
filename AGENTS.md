@@ -25,7 +25,11 @@
 
 When fixing a bug, follow this sequence:
 
-1. **Create a branch** — `git checkout -b fix/<short-description>`
+1. **Create a branch from latest master** — fetch first, then branch from `origin/master`:
+   ```
+   git fetch origin
+   git checkout -b fix/<short-description> origin/master
+   ```
 2. **Write a failing test first** — add an integration test that reproduces the bug and confirm it fails before touching the code
 4. **Implement the fix** — change only what is needed to make the test pass
 5. **Run all tests** — verify no regressions
