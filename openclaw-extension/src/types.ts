@@ -4,6 +4,7 @@ export type HubAccountConfig = {
   name?: string;
   enabled?: boolean;
   url?: string;
+  dmPolicy?: string;
   allowFrom?: string[];
 };
 

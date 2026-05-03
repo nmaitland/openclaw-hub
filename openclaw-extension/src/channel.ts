@@ -8,7 +8,10 @@ import {
   readStringParam,
   readBooleanParam,
 } from "openclaw/plugin-sdk/param-readers";
-import { jsonResult } from "openclaw/plugin-sdk";
+import {
+  createRestrictSendersChannelSecurity,
+  jsonResult,
+} from "openclaw/plugin-sdk";
 
 function createDefaultChannelRuntimeState(accountId: string) {
   return { accountId, connected: false, running: false };
@@ -59,6 +62,20 @@ function resolveHubAccount(params: {
     config: accountCfg,
   };
 }
+
+const hubSecurityAdapter = createRestrictSendersChannelSecurity<ResolvedHubAccount>({
+  channelKey: CHANNEL_ID,
+  resolveDmPolicy: (account) => account.config.dmPolicy,
+  resolveDmAllowFrom: (account) => account.allowFrom,
+  resolveGroupPolicy: () => null,
+  surface: "Swissclaw Hub chats",
+  openScope: "paired users",
+  groupPolicyPath: "channels.swissclaw-hub.groupPolicy",
+  groupAllowFromPath: "channels.swissclaw-hub.groupAllowFrom",
+  defaultDmPolicy: "pairing",
+  allowFromPathSuffix: "allowFrom",
+  policyPathSuffix: "dmPolicy",
+});
 
 export const hubPlugin: ChannelPlugin<ResolvedHubAccount> = {
   id: CHANNEL_ID,
@@ -121,12 +138,7 @@ export const hubPlugin: ChannelPlugin<ResolvedHubAccount> = {
     },
   },
 
-  security: {
-    resolveDmPolicy: () => ({
-      policy: "allowlist",
-      allowFrom: [],
-    }),
-  },
+  security: hubSecurityAdapter,
 
   outbound: {
     deliveryMode: "direct",
